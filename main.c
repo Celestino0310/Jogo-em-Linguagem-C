@@ -10,11 +10,11 @@ bool noChao = true;               // Impede pular no ar
 
 void desenhaPersonagem() {
     glBegin(GL_QUADS);
-        glColor3f(0.0f, 1.0f, 0.0f); // Personagem Verde
-        glVertex2f(posX - 0.05f, posY - 0.05f);
-        glVertex2f(posX + 0.05f, posY - 0.05f);
-        glVertex2f(posX + 0.05f, posY + 0.05f);
-        glVertex2f(posX - 0.05f, posY + 0.05f);
+        glColor3f(1.0f, 0.5f, 1.0f); // Personagem Verde
+        glVertex2f(posX - 0.03f, posY - 0.03f);
+        glVertex2f(posX + 0.03f, posY - 0.03f);
+        glVertex2f(posX + 0.03f, posY + 0.03f);
+        glVertex2f(posX - 0.03f, posY + 0.03f);
     glEnd();
 }
 
@@ -55,9 +55,34 @@ void atualiza(int valor) {
 }
 
 void display() {
+  
     glClear(GL_COLOR_BUFFER_BIT);
+
     desenhaPersonagem();
-    glutSwapBuffers();
+
+    // ?? TRIÂNGULO
+    glBegin(GL_TRIANGLES);
+        glColor3f(1.0, 0.0, 0.0);
+        glVertex2f(-0.8, -0.5);
+
+        glColor3f(0.0, 1.0, 0.0);
+        glVertex2f(-0.2, -0.5);
+
+        glColor3f(0.0, 0.0, 1.0);
+        glVertex2f(-0.5, 0.2);
+    glEnd();
+
+    // ?? QUADRADO
+    glBegin(GL_QUADS);
+        glColor3f(1.0, 1.0, 0.0);
+
+        glVertex2f(0.2, 0.2);
+        glVertex2f(0.6, 0.2);
+        glVertex2f(0.6, -0.2);
+        glVertex2f(0.2, -0.2);
+    glEnd();
+
+    glutSwapBuffers(); // ? AGORA SIM, NO FINAL
 }
 
 int main(int argc, char** argv) {
