@@ -17,6 +17,8 @@ static float gravidade = -0.002f;
 static bool  noChao   = false;
 static bool  podeDash  = true;
 static int   direcao  =  1;
+static float tempoDash = 0.0f;
+static float cooldownDash = 3.0f;
 
 static bool kA = false, kD = false, kW = false, kSpace = false;
 
@@ -97,15 +99,25 @@ static void resolveColisoes(){
     for(i=0;i<numBlocos;i++){
         if(!colideCom(blocos[i])) continue;
         Bloco b = blocos[i];
-        float oB = (posY+PH) - b.y1; // overlap baixo
-        float oC = b.y2 - posY;      // overlap cima
+        float oB = b.y2 - posY;; // overlap baixo
+        float oC = (posY+PH) - b.y1;      // overlap cima
         float oD = (posX+PW) - b.x1; // overlap dir
         float oE = b.x2 - (posX-PW); // overlap esq
         float mH = oB<oC ? oB : oC;
         float mV = oD<oE ? oD : oE;
         if(mH < mV){
-            if(oB < oC){ posY -= oB; if(velY>0) velY=0; noChao=true; podeDash=true; }
-            else        { posY += oC; if(velY<0) velY=0; }
+            if(oB < oC){ 
+    // COLISÃO COM O CHÃO
+    posY = b.y2;   // posiciona em cima do bloco
+    velY = 0;
+    noChao = true;
+    
+}
+else { 
+    // COLISÃO COM O TETO
+    posY = b.y1 - PH; //posiciona abaixo do teto
+    velY = 0;
+}
         } else {
             if(oD < oE) posX -= oD;
             else        posX += oE;
@@ -118,8 +130,12 @@ static void resolveColisoes(){
 // PUBLICAS
 // ============================================================
 void initGame(){
-    posX=-0.75f; posY=-0.65f;
-    velX=0; velY=0; noChao=false; podeDash=true;
+    posX=-0.75f; 
+	posY=-0.80f;
+	if(posY <= -0.80f){
+    noChao = true;
+}
+    velX=0; velY=0; noChao=true; podeDash=true;
     kA=kD=kW=kSpace=false;
 }
 
@@ -186,6 +202,16 @@ void updateGame(){
 
     // Caiu no buraco = respawn
     if(posY < -1.2f){ initGame(); }
+    
+    //COOLDOWN DO DASH (2 segundos)
+    if(!podeDash){
+    	tempoDash += 0.016f; // 16ms por frame
+    	
+    	if(tempoDash>=cooldownDash){
+    		podeDash = true;
+    		tempoDash = 0.0f;
+		}
+	}
 }
 
 void handleGameInput(unsigned char tecla){
@@ -193,12 +219,14 @@ void handleGameInput(unsigned char tecla){
         case 'a': case 'A': kA=true;    break;
         case 'd': case 'D': kD=true;    break;
         case 'w': case 'W': kW=true;    break;
-        case ' ':           kSpace=true; break;
+        case ' ' :  kSpace=true; break;
         case 'q': case 'Q': // DASH
             if(podeDash){
                 velX=0.13f*direcao;
                 velY=0.01f;
+                
                 podeDash=false;
+                tempoDash=0.0f;
             }
             break;
         case 27: gameState=0; initGame(); break;
@@ -211,6 +239,6 @@ void handleGameInputUp(unsigned char tecla){
         case 'a': case 'A': kA=false;    break;
         case 'd': case 'D': kD=false;    break;
         case 'w': case 'W': kW=false;    break;
-        case ' ':           kSpace=false; break;
+        case  ' ' :           kSpace=false; break;
     }
 }
