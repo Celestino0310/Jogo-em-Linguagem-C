@@ -9,6 +9,9 @@ extern Bloco *blocos;
 extern int    numBlocos;
 extern int    faseAtual;
 
+
+typedef struct { float r,g,b; } Cor;
+
 void initMapa();
 void renderMapa();
 void updateMapa();

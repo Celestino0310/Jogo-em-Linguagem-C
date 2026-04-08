@@ -8,7 +8,8 @@
 
 int   gameState = 0;
 float lastTime  = 0;
-
+int largura= 1920;
+int altura =1080; 
 void render() {
     if (gameState == 0) renderMenu();
     else                renderGame();
@@ -38,7 +39,7 @@ int main(int argc, char** argv) {
     glutInit(&argc, argv);
     glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB);
     glutInitWindowSize(800, 600);
-    glutInitWindowPosition(200, 100);
+    glutInitWindowPosition(200, 200);
     glutCreateWindow("Althea");
 
     initMenu();

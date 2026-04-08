@@ -1,5 +1,4 @@
 #define GLUT_DISABLE_ATEXIT_HACK
-
 #include "../include/GL/glut.h"
 #include "../include/mapa.h"
 #include <stdbool.h>
@@ -32,7 +31,7 @@ static void initEstrelas(){
 static void desenhaEstrelas(){
     tempoEstrela += 0.016f;
     int i;
-    glPointSize(1.5f);
+    glPointSize(2.5f);//1.5f
     glBegin(GL_POINTS);
     for(i=0;i<MAX_ESTRELAS;i++){
         float b = estrelas[i].brilho*(0.6f+0.4f*sinf(tempoEstrela*1.5f+i));
@@ -86,32 +85,43 @@ static void desenhaNeveCaindo(){
 
 // --- MAPA 1: FLORESTA NEVADA ---
 static Bloco blocosFase0[] = {
-    {-1.00f,-1.00f,-0.92f, 1.00f}, // 0  parede esq
-    { 0.92f,-1.00f, 1.00f, 1.00f}, // 1  parede dir
-    {-1.00f, 0.92f, 1.00f, 1.00f}, // 2  teto
-    {-0.92f,-1.00f,-0.50f,-0.82f}, // 3  chao esq
-    {-0.30f,-1.00f, 0.05f,-0.82f}, // 4  chao centro-esq
-    { 0.25f,-1.00f, 0.60f,-0.82f}, // 5  chao centro-dir
-    { 0.75f,-1.00f, 0.92f,-0.82f}, // 6  chao dir
-    {-0.88f,-0.82f,-0.70f, 0.20f}, // 7  torre esq corpo
-    {-0.91f, 0.18f,-0.67f, 0.30f}, // 8  torre esq topo
-    {-0.84f, 0.00f,-0.74f, 0.12f}, // 9  janela torre
-    {-0.65f,-0.50f,-0.40f,-0.40f}, // 10 plat esq 1
-    {-0.50f,-0.18f,-0.25f,-0.08f}, // 11 plat esq 2
-    {-0.62f, 0.12f,-0.38f, 0.22f}, // 12 plat esq 3
-    {-0.48f, 0.42f,-0.24f, 0.52f}, // 13 plat esq 4
-    {-0.22f,-0.82f,-0.12f, 0.45f}, // 14 pilar esq central
-    { 0.12f,-0.82f, 0.22f, 0.45f}, // 15 pilar dir central
-    {-0.22f, 0.35f, 0.22f, 0.45f}, // 16 teto central
-    {-0.18f,-0.10f, 0.18f, 0.00f}, // 17 plat interna baixa
-    {-0.18f, 0.18f, 0.18f, 0.28f}, // 18 plat interna alta
-    { 0.32f,-0.82f, 0.44f, 0.55f}, // 19 torre fina
-    { 0.29f, 0.53f, 0.47f, 0.63f}, // 20 topo torre fina
-    { 0.48f,-0.55f, 0.72f,-0.45f}, // 21 plat dir 1
-    { 0.55f,-0.22f, 0.80f,-0.12f}, // 22 plat dir 2
-    { 0.60f, 0.12f, 0.85f, 0.22f}, // 23 plat dir 3
-    { 0.65f, 0.45f, 0.90f, 0.55f}, // 24 plat dir 4
-    { 0.70f, 0.78f, 0.92f, 0.86f}, // 25 SAIDA
+    {-1.00f,-1.00f,-0.95f, 1.00f}, // 0  parede esq
+    { 0.975f,-1.00f, 1.00f, 1.00f}, // 1  parede dir
+    {-1.00f, 0.95f, 0.55f, 1.00f}, //2  teto
+    //em ordem da esquerda pra direita
+    {-0.95f,-1.00f,-0.67f,-0.82f}, // 3  chao esq(onde o player nasce)
+    {-0.67f,-1.00f,-0.30f,-0.98f}, // 4 plat espinho 1
+    {-0.30f,-1.00f, -0.10f,-0.60f}, // 5  plat safe 1
+    { -0.10f,-1.00f, 0.30f,-0.82f}, // 6  plat espinho 2  
+	{ 0.30f,-0.50f, 0.35f,-0.15f}, // 7  ferro esquerdo
+	{ 0.45f,-0.50f, 0.50f,-0.15f}, // 8  ferro direito 
+	{ 0.30f,-0.10f, 0.50f,-0.15f}, // 9 plataforma de ferro 
+    {0.843f, -0.30f, 0.975f,  0.25f},// 20 parede de terra DIREITA marrom
+	{ 0.30f,-1.00f, 0.50f,-0.50f}, // 11  sustenta ferro marrom
+	{0.860f, -0.60f, 0.975f, -0.30f},// 19 parede de terra DIREITA BAIXO marrom
+	{0.55f, 0.95f, 0.80f, 1.00f}, //13  teto de cimento
+	
+    //decoração esquerda  
+   
+    {-0.875f, 0.95f,-0.85f, 0.60f}, // 14  torre esq topo
+    {-0.675f, 0.95f,-0.65f, 0.60f}, // 15  torre esq topo
+    { -0.875f, 0.60f,-0.65f, 0.55f}, // 16 base da decoração de ferro esqurda
+    
+    
+    { -0.95, 0.95f,-0.875f, 0.30f}, // 17 parede de terra esq
+  
+    {0.885f, -1.00f, 0.975f, -0.60f},// 18 parede de terra DIREITA BAIXISSIMO
+
+  
+    { 0.45f, 0.95f, 0.50f, 0.55f}, // 12  ferro direito do teto tambem ta aqui pra fica cinza
+    { 0.35f,-0.35f, 0.45f,-0.30f}, // 10 ferro central ta aqui pra fica cinza
+    {0.87f,  0.25f, 0.97f,  0.70f},// 21 parede de terra DIREITA ALTO
+
+    {0.15f, 0.95f, 0.45f, 0.88f}, // 22 teto menorzinho marrom central
+    {-0.05f, 0.95f, 0.15f, 0.80f}, // 23 teto menor marrom central
+    {-0.25f, 0.95f, -0.05f, 0.60f}, //24 teto central marrom	
+    
+    { 0.87f, 0.70f, 0.97f, 0.75f}, // 25 SAIDA
 };
 
 // --- MAPA 2: CIDADE NEVADA ---
@@ -141,7 +151,7 @@ static Bloco blocosFase1[] = {
     { 0.65f,-0.42f, 0.92f,-0.32f}, // 22 degrau 2
     { 0.72f,-0.12f, 0.92f,-0.02f}, // 23 degrau 3
     { 0.78f, 0.20f, 0.92f, 0.30f}, // 24 degrau 4
-    { 0.70f, 0.78f, 0.92f, 0.86f}, // 25 SAIDA
+    { 0.70f, 0.78f, 0.92f, 0.80f}, // 25 SAIDA
 };
 
 // --- MAPA 3: GELEIRAS ---
@@ -202,29 +212,29 @@ static Bloco blocosFase3[] = {
 // ============================================================
 // CORES POR FASE
 // ============================================================
-typedef struct { float r,g,b; } Cor;
+
 
 static Cor corFundo[]  = {
-    {0.02f,0.04f,0.08f},
+    {0.02f,0.04f,0.08f},//fase 1
     {0.03f,0.03f,0.10f},
     {0.03f,0.06f,0.12f},
     {0.05f,0.04f,0.08f},
 };
 static Cor corBloco[]  = {
-    {0.38f,0.24f,0.12f},
+    {0.38f,0.24f,0.12f},//fase 1
     {0.25f,0.28f,0.42f},
     {0.50f,0.68f,0.88f},
     {0.35f,0.32f,0.38f},
 };
 static Cor corBorda[]  = {
-    {0.20f,0.12f,0.06f},
+    {0.20f,0.12f,0.06f},//fase 1
     {0.35f,0.40f,0.60f},
     {0.28f,0.48f,0.72f},
     {0.20f,0.18f,0.22f},
 };
 static Cor corPedra[]  = {
-    {0.20f,0.22f,0.38f},
-    {0.18f,0.20f,0.35f},
+    {0.20f,0.22f,0.38f},//fase 1
+    {0.18f,0.20f,0.35f},//fase 2
     {0.22f,0.35f,0.55f},
     {0.22f,0.20f,0.28f},
 };
@@ -253,6 +263,9 @@ static void bordaLinha(float x1,float y1,float x2,float y2,float r,float g,float
         glVertex2f(x2,y2);glVertex2f(x1,y2);
     glEnd();
 }
+
+//é um facilitador pra deixar aquela camada branca
+
 static void neveTopo(float x1,float y2,float x2){
     float esp=(faseAtual>=2)?0.045f:0.030f;
     glColor3f(0.88f,0.93f,1.00f);
@@ -267,12 +280,16 @@ static void neveTopo(float x1,float y2,float x2){
     glEnd();
 }
 
+
+
 static void desenhaBloco(float x1,float y1,float x2,float y2){
     Cor c=corBloco[faseAtual], b=corBorda[faseAtual];
     quad(x1,y1,x2,y2, c.r,c.g,c.b);
     bordaLinha(x1,y1,x2,y2, b.r,b.g,b.b);
     neveTopo(x1,y2,x2);
 }
+
+
 static void desenhaBlocoPedra(float x1,float y1,float x2,float y2){
     Cor c=corPedra[faseAtual], b=corBordaP[faseAtual];
     quad(x1,y1,x2,y2, c.r,c.g,c.b);
@@ -335,7 +352,7 @@ void initMapa(){
 
 void renderMapa(){
     // fundo colorido por fase
-    typedef struct { float r,g,b; } Cor;
+   
     Cor bg = corFundo[faseAtual];
     glClearColor(bg.r,bg.g,bg.b,1.0f);
     glClear(GL_COLOR_BUFFER_BIT);

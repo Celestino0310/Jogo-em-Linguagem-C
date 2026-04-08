@@ -34,7 +34,8 @@ static bool colideCom(Bloco b){
            posY+PH>b.y1 && posY<b.y2;
 }
 static void resolveColisoes(){
-    int i; noChao=false;
+    int i;
+	noChao=false;
     float atrito=(faseAtual==2)?0.05f:0.28f;
     for(i=0;i<numBlocos;i++){
         if(!colideCom(blocos[i])) continue;
