@@ -4,6 +4,7 @@
 #include <stdbool.h>
 
 typedef struct { float x1, y1, x2, y2; } Bloco;
+typedef struct { float r, g, b; }         Cor;
 
 extern Bloco *blocos;
 extern int    numBlocos;
