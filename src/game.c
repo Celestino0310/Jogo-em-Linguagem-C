@@ -1,6 +1,7 @@
 #define GLUT_DISABLE_ATEXIT_HACK
 #include "../include/game.h"
 #include "../include/mapa.h"
+#include "../include/anim.h"
 #include "../include/GL/glut.h"
 #include <stdbool.h>
 #include <stdlib.h>
@@ -11,7 +12,7 @@ extern int gameState;
 // JOGADOR
 // ============================================================
 static int   Health       = 3;
-static float posX         = -0.75f;
+static float posX         = -0.715f;
 static float posY         = -0.80f;
 static float velX         =  0.0f;
 static float velY         =  0.0f;
@@ -61,8 +62,8 @@ static void checaSaida(){
     int idx=indiceSaida();
     if(idx<0||idx>=numBlocos) return;
     Bloco s=blocos[idx];
-    if(posX+PW>s.x1 && posX-PW<s.x2 &&
-       posY>=s.y2-0.08f && posY<=s.y2+0.08f && noChao){
+    if(posX+PW>=s.x1-0.01f && posX-PW<s.x1 &&
+       posY+PH>s.y1 && posY<s.y2){
         if(faseAtual<3){
             avancarFase();
             posX=-0.75f; posY=-0.70f; velX=0; velY=0; noChao=true;
@@ -81,44 +82,14 @@ void initGame(){
     velX=0; velY=0; noChao=true; podeDash=true; tempoDash=0;
     kA=kD=kW=kSpace=false;
     initMapa(); // inicializa o mapa
+    animInit(); // carrega a spritesheet da Althea
 }
 
 void renderGame(){
     renderMapa(); // desenha fundo + blocos
 
-    // personagem
-    glColor3f(0.6f,0.2f,0.8f);
-    glBegin(GL_QUADS);
-        glVertex2f(posX-(PW-0.025f),posY);
-        glVertex2f(posX+(PW-0.025f),posY);
-        glVertex2f(posX+(PW-0.025f),posY+PH);
-        glVertex2f(posX-(PW-0.025f),posY+PH);
-    glEnd();
-    glColor3f(0,0,0); glLineWidth(1.5f);
-    glBegin(GL_LINE_LOOP);
-        glVertex2f(posX-(PW-0.025f),posY); glVertex2f(posX+(PW-0.025f),posY);
-        glVertex2f(posX+(PW-0.025f),posY+PH); glVertex2f(posX-(PW-0.025f),posY+PH);
-    glEnd();
-    // cabeca
-    glColor3f(1.0f,0.8f,0.6f);
-    glBegin(GL_QUADS);
-        glVertex2f(posX-0.03f,posY+0.09f); glVertex2f(posX+0.03f,posY+0.09f);
-        glVertex2f(posX+0.03f,posY+0.14f); glVertex2f(posX-0.03f,posY+0.14f);
-    glEnd();
-    // olho
-    float ox=(direcao>0)?posX+0.017f:posX-0.017f;
-    glColor3f(0,0,0);
-    glBegin(GL_QUADS);
-        glVertex2f(ox-0.009f,posY+0.119f); glVertex2f(ox+0.009f,posY+0.119f);
-        glVertex2f(ox+0.009f,posY+0.125f); glVertex2f(ox-0.009f,posY+0.125f);
-    glEnd();
-    // braco
-    float oax=(direcao>0)?posX+0.015f:posX-0.015f;
-    glColor3f(0.3f,0.0f,0.5f);
-    glBegin(GL_QUADS);
-        glVertex2f(oax-0.009f,posY+0.018f); glVertex2f(oax+0.009f,posY+0.018f);
-        glVertex2f(oax+0.009f,posY+0.068f); glVertex2f(oax-0.009f,posY+0.068f);
-    glEnd();
+    // personagem — usa sprite se carregado, senão retângulo de fallback
+    animDraw(posX, posY, (PW-0.025f)*3.0f, PH);
 
     // HUD vidas
     int h;
@@ -193,6 +164,10 @@ void updateGame(){
         if(Health<=0){ gameState=0; initGame(); return; }
         posX=-0.75f; posY=-0.70f; velX=0; velY=0; noChao=true;
     }
+
+    // atualiza animação do personagem (sempre no final do update)
+    animUpdate(0.016f, velX, velY, (int)noChao,
+               (int)podeDash, tempoDash, direcao);
 }
 
 void handleGameInput(unsigned char tecla){
