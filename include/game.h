@@ -7,4 +7,4 @@ void updateGame();
 void handleGameInput(unsigned char tecla);
 void handleGameInputUp(unsigned char tecla);
 
-#endif;
+#endif

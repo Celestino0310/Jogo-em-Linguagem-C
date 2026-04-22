@@ -4,9 +4,9 @@
 CPP      = g++.exe -D__DEBUG__
 CC       = gcc.exe -D__DEBUG__
 WINDRES  = windres.exe
-OBJ      = main.o menu.o game.o
-LINKOBJ  = main.o menu.o game.o
-LIBS     = -L"C:/Program Files (x86)/Dev-Cpp/MinGW64/lib32" -L"C:/Program Files (x86)/Dev-Cpp/MinGW64/x86_64-w64-mingw32/lib32" -static-libgcc -L"C:/Users/gabri/Desktop/glut-devc"  -lglut32 -lglu32 -lopengl32 -lwinmm -m32 -g3
+OBJ      = menu.o main.o game.o mapa.o
+LINKOBJ  = menu.o main.o game.o mapa.o
+LIBS     = -L"C:/Program Files (x86)/Dev-Cpp/MinGW64/lib32" -L"C:/Program Files (x86)/Dev-Cpp/MinGW64/x86_64-w64-mingw32/lib32" -static-libgcc -L"C:/Users/gabri/Desktop/glut-devc"  -lglut32 -lglu32 -lopengl32 -lwinmm -Llib -lgdi32  -Iinclude -m32 -g3
 INCS     = -I"C:/Program Files (x86)/Dev-Cpp/MinGW64/include" -I"C:/Program Files (x86)/Dev-Cpp/MinGW64/x86_64-w64-mingw32/include" -I"C:/Program Files (x86)/Dev-Cpp/MinGW64/lib/gcc/x86_64-w64-mingw32/4.9.2/include"
 CXXINCS  = -I"C:/Program Files (x86)/Dev-Cpp/MinGW64/include" -I"C:/Program Files (x86)/Dev-Cpp/MinGW64/x86_64-w64-mingw32/include" -I"C:/Program Files (x86)/Dev-Cpp/MinGW64/lib/gcc/x86_64-w64-mingw32/4.9.2/include" -I"C:/Program Files (x86)/Dev-Cpp/MinGW64/lib/gcc/x86_64-w64-mingw32/4.9.2/include/c++"
 BIN      = Althea.exe
@@ -24,11 +24,14 @@ clean: clean-custom
 $(BIN): $(OBJ)
 	$(CC) $(LINKOBJ) -o $(BIN) $(LIBS)
 
-main.o: main.c
-	$(CC) -c main.c -o main.o $(CFLAGS)
-
 menu.o: menu.c
 	$(CC) -c menu.c -o menu.o $(CFLAGS)
 
+main.o: main.c
+	$(CC) -c main.c -o main.o $(CFLAGS)
+
 game.o: game.c
 	$(CC) -c game.c -o game.o $(CFLAGS)
+
+mapa.o: mapa.c
+	$(CC) -c mapa.c -o mapa.o $(CFLAGS)

@@ -1,5 +1,6 @@
 #define GLUT_DISABLE_ATEXIT_HACK
 #include "../include/game.h"
+#include "../include/mapa.h"
 #include "../include/GL/glut.h"
 #include <stdbool.h>
 #include <stdlib.h>
@@ -9,119 +10,127 @@ extern int gameState;
 // ============================================================
 // JOGADOR
 // ============================================================
-static float posX     = -0.75f;
-static float posY     = -0.65f;
-static float velX     =  0.0f;
-static float velY     =  0.0f;
+static int Health = 3;
+static float posX = -0.75f;
+static float posY = -0.80f;
+static float velX = 0.0f;
+static float velY = 0.0f;
 static float gravidade = -0.002f;
-static bool  noChao   = false;
-static bool  podeDash  = true;
-static int   direcao  =  1;
+
+static bool noChao = true;
+static bool onLeftWall = false;
+static bool onRightWall = false;
+static bool isClinging = false;
+
+static int direcao = 1;
+
+
+static float jumpForce = 0.038f;
+static int jumpsRestantes = 1;
+static int maxJumps = 2;
+
+
+static int extraJumpsAvailable = 0;
+static float extraJumpCooldown = 0.0f;
+const float EXTRA_JUMP_COOLDOWN_TIME = 1.5f;
+
+
+static bool podeDash = true;
 static float tempoDash = 0.0f;
 static float cooldownDash = 3.0f;
 
-static bool kA = false, kD = false, kW = false, kSpace = false;
 
-// ============================================================
-// MAPA
-// ============================================================
-typedef struct { float x1, y1, x2, y2; } Bloco;
+static bool isDashing = false;
+static float dashVelX = 0.0f;
+static float dashVelY = 0.0f;
+static float dashTimer = 0.0f;
+static const float DASH_DURACAO   = 0.18f;  
+static const float DASH_FORCA     = 0.045f;
+static const float DASH_FORCA_DIAG = 0.032f; 
 
-static Bloco blocos[] = {
-    {-1.00f, -1.00f, -0.10f, -0.80f}, // 0 chao esq
-    { 0.10f, -1.00f,  1.00f, -0.80f}, // 1 chao dir
-    {-1.00f, -1.00f, -0.90f,  1.00f}, // 2 parede esq
-    { 0.90f, -1.00f,  1.00f,  1.00f}, // 3 parede dir
-    {-1.00f,  0.90f,  1.00f,  1.00f}, // 4 teto
-    {-0.90f,  0.30f, -0.80f,  0.90f}, // 5 pilar esq caixa
-    {-0.90f,  0.80f, -0.30f,  0.90f}, // 6 teto caixa
-    {-0.40f,  0.30f, -0.30f,  0.80f}, // 7 pilar dir caixa
-    {-0.90f,  0.20f, -0.30f,  0.30f}, // 8 chao caixa
-    {-0.60f, -0.20f,  0.00f, -0.10f}, // 9 plat centro-esq
-    {-0.10f,  0.10f,  0.30f,  0.20f}, // 10 plat centro
-    { 0.20f, -0.50f,  0.90f, -0.40f}, // 11 chao caixa dir
-    { 0.20f, -0.50f,  0.30f,  0.10f}, // 12 pilar esq dir
-    { 0.80f, -0.50f,  0.90f,  0.10f}, // 13 pilar dir dir
-    { 0.20f,  0.00f,  0.40f,  0.10f}, // 14 teto esq dir
-    { 0.70f,  0.00f,  0.90f,  0.10f}, // 15 teto dir dir
-    { 0.40f,  0.40f,  0.90f,  0.50f}, // 16 plat alta dir
-    { 0.00f,  0.55f,  0.30f,  0.65f}, // 17 plat topo centro
-};
-static int numBlocos = sizeof(blocos) / sizeof(Bloco);
+static bool kA=false, kD=false, kW=false, kSpace=false;
 
-// indices de blocos que sao "pedra" (paredes/pilares)
-static bool ehPedra(int i) {
-    return (i==2||i==3||i==4||i==5||i==6||i==7||i==12||i==13||i==14||i==15);
-}
 
-// ============================================================
-// DESENHO
-// ============================================================
-static void quad(float x1,float y1,float x2,float y2,float r,float g,float b){
-    glColor3f(r,g,b);
-    glBegin(GL_QUADS);
-        glVertex2f(x1,y1);glVertex2f(x2,y1);
-        glVertex2f(x2,y2);glVertex2f(x1,y2);
-    glEnd();
-}
-static void borda(float x1,float y1,float x2,float y2,float r,float g,float b){
-    glColor3f(r,g,b);
-    glLineWidth(1.5f);
-    glBegin(GL_LINE_LOOP);
-        glVertex2f(x1,y1);glVertex2f(x2,y1);
-        glVertex2f(x2,y2);glVertex2f(x1,y2);
-    glEnd();
-}
-static void desenhaTerra(float x1,float y1,float x2,float y2){
-    quad(x1,y1,x2,y2, 0.35f,0.22f,0.10f);
-    borda(x1,y1,x2,y2, 0.18f,0.11f,0.05f);
-    quad(x1,y2-0.025f,x2,y2, 0.20f,0.55f,0.20f); // grama
-}
-static void desenhaPedra(float x1,float y1,float x2,float y2){
-    quad(x1,y1,x2,y2, 0.25f,0.28f,0.45f);
-    borda(x1,y1,x2,y2, 0.12f,0.14f,0.22f);
-}
+static bool kSpaceConsumed = false;
+
+
+static float clingSlideSpeed = -0.008f;
+static float wallJumpXForce = 0.27f;
+static float wallJumpYForce = 0.043f;
 
 // ============================================================
 // COLISAO
 // ============================================================
 #define PW 0.055f
-#define PH 0.09f
+#define PH 0.090f
 
 static bool colideCom(Bloco b){
-    return posX+PW > b.x1 && posX-PW < b.x2 &&
-           posY+PH > b.y1 && posY    < b.y2;
+    return posX+PW>b.x1 && posX-PW<b.x2 &&
+           posY+PH>b.y1 && posY<b.y2;
 }
 
 static void resolveColisoes(){
-    int i;
     noChao = false;
-    for(i=0;i<numBlocos;i++){
+    onLeftWall = false;
+    onRightWall = false;
+
+    float atrito = (faseAtual==2)?0.05f:0.28f;
+
+    int i;
+    for(i = 0; i < numBlocos; i++){
         if(!colideCom(blocos[i])) continue;
+
         Bloco b = blocos[i];
-        float oB = b.y2 - posY;; // overlap baixo
-        float oC = (posY+PH) - b.y1;      // overlap cima
-        float oD = (posX+PW) - b.x1; // overlap dir
-        float oE = b.x2 - (posX-PW); // overlap esq
-        float mH = oB<oC ? oB : oC;
-        float mV = oD<oE ? oD : oE;
-        if(mH < mV){
-            if(oB < oC){ 
-    // COLISÃO COM O CHÃO
-    posY = b.y2;   // posiciona em cima do bloco
-    velY = 0;
-    noChao = true;
-    
+        float oB = b.y2 - posY;
+        float oC = (posY + PH) - b.y1;
+        float oD = (posX + PW) - b.x1;
+        float oE = b.x2 - (posX - PW);
+
+        float mH = oB < oC ? oB : oC;
+        float mV = oD < oE ? oD : oE;
+
+        if(mH < mV){  
+            if(oB < oC){
+                posY = b.y2;
+                velY = 0;
+                noChao = true;
+                podeDash = true;
+                extraJumpsAvailable = 1;
+                jumpsRestantes = maxJumps;
+            }
+            else {
+                posY = b.y1 - PH;
+                velY = 0;
+            }
+        }
+        else {  
+            if(oD < oE){
+                posX -= oD;
+                velX = 0;
+                onLeftWall = true;
+            }
+            else {
+                posX += oE;
+                velX = 0;
+                onRightWall = true;
+            }
+        }
+    }
+
+    if(noChao) velX *= (1.0f - atrito);
 }
-else { 
-    // COLISÃO COM O TETO
-    posY = b.y1 - PH; //posiciona abaixo do teto
-    velY = 0;
-}
+
+static void checaSaida(){
+    int idx=indiceSaida();
+    if(idx<0||idx>=numBlocos) return;
+    Bloco s=blocos[idx];
+    if(posX+PW>s.x1 && posX-PW<s.x2 &&
+       posY>=s.y2-0.08f && posY<=s.y2+0.08f && noChao){
+        if(faseAtual<3){
+            avancarFase();
+            posX=-0.75f; posY=-0.70f; velX=0; velY=0; noChao=true;
         } else {
-            if(oD < oE) posX -= oD;
-            else        posX += oE;
-            velX = 0;
+            gameState=0; initGame();
         }
     }
 }
@@ -130,115 +139,265 @@ else {
 // PUBLICAS
 // ============================================================
 void initGame(){
-    posX=-0.75f; 
-	posY=-0.80f;
-	if(posY <= -0.80f){
-    noChao = true;
-}
-    velX=0; velY=0; noChao=true; podeDash=true;
+    Health=3;
+    posX=-0.75f; posY=-0.80f;
+    velX=0; velY=0; noChao=true; podeDash=true; tempoDash=0;
+    isDashing=false; dashVelX=0; dashVelY=0; dashTimer=0;
     kA=kD=kW=kSpace=false;
+    kSpaceConsumed=false;
+    initMapa();
 }
 
 void renderGame(){
-    glClearColor(0.05f,0.05f,0.15f,1.0f);
-    glClear(GL_COLOR_BUFFER_BIT);
+    renderMapa();
 
-    // Mapa
-    int i;
-    for(i=0;i<numBlocos;i++){
-        Bloco b=blocos[i];
-        if(ehPedra(i)) desenhaPedra(b.x1,b.y1,b.x2,b.y2);
-        else           desenhaTerra(b.x1,b.y1,b.x2,b.y2);
+   
+    glColor3f(0.6f,0.2f,0.8f);
+    glBegin(GL_QUADS);
+        glVertex2f(posX-(PW-0.025f),posY);
+        glVertex2f(posX+(PW-0.025f),posY);
+        glVertex2f(posX+(PW-0.025f),posY+PH);
+        glVertex2f(posX-(PW-0.025f),posY+PH);
+    glEnd();
+    glColor3f(0,0,0); glLineWidth(1.5f);
+    glBegin(GL_LINE_LOOP);
+        glVertex2f(posX-(PW-0.025f),posY); glVertex2f(posX+(PW-0.025f),posY);
+        glVertex2f(posX+(PW-0.025f),posY+PH); glVertex2f(posX-(PW-0.025f),posY+PH);
+    glEnd();
+    
+    glColor3f(1.0f,0.8f,0.6f);
+    glBegin(GL_QUADS);
+        glVertex2f(posX-0.03f,posY+0.09f); glVertex2f(posX+0.03f,posY+0.09f);
+        glVertex2f(posX+0.03f,posY+0.14f); glVertex2f(posX-0.03f,posY+0.14f);
+    glEnd();
+  
+    float ox=(direcao>0)?posX+0.017f:posX-0.017f;
+    glColor3f(0,0,0);
+    glBegin(GL_QUADS);
+        glVertex2f(ox-0.009f,posY+0.119f); glVertex2f(ox+0.009f,posY+0.119f);
+        glVertex2f(ox+0.009f,posY+0.125f); glVertex2f(ox-0.009f,posY+0.125f);
+    glEnd();
+   
+    float oax=(direcao>0)?posX+0.015f:posX-0.015f;
+    glColor3f(0.3f,0.0f,0.5f);
+    glBegin(GL_QUADS);
+        glVertex2f(oax-0.009f,posY+0.018f); glVertex2f(oax+0.009f,posY+0.018f);
+        glVertex2f(oax+0.009f,posY+0.068f); glVertex2f(oax-0.009f,posY+0.068f);
+    glEnd();
+
+    
+    int h;
+    for(h=0;h<3;h++){
+        float cor=(h<Health)?0.9f:0.2f;
+        glColor3f(cor,0.1f,0.1f);
+        glBegin(GL_QUADS);
+            glVertex2f(-0.98f+h*0.09f,0.88f); glVertex2f(-0.90f+h*0.09f,0.88f);
+            glVertex2f(-0.90f+h*0.09f,0.95f); glVertex2f(-0.98f+h*0.09f,0.95f);
+        glEnd();
+        glColor3f(0.5f,0.0f,0.0f); glLineWidth(1.0f);
+        glBegin(GL_LINE_LOOP);
+            glVertex2f(-0.98f+h*0.09f,0.88f); glVertex2f(-0.90f+h*0.09f,0.88f);
+            glVertex2f(-0.90f+h*0.09f,0.95f); glVertex2f(-0.98f+h*0.09f,0.95f);
+        glEnd();
     }
 
-    //Jogador
-    float largura = PW - 0.025f;
-	
-	quad(posX-largura, posY, posX+largura, posY+PH, 0.6f, 0.2f, 0.8f);
-	borda(posX-largura, posY, posX+largura, posY+PH, 0.0f,0.0f,0.0f);
-	  
+   
+    if(!podeDash){
+        float prog=tempoDash/cooldownDash;
+        glColor3f(0.2f,0.2f,0.5f);
+        glBegin(GL_QUADS);
+            glVertex2f(-0.98f,0.80f); glVertex2f(-0.98f+prog*0.38f,0.80f);
+            glVertex2f(-0.98f+prog*0.38f,0.84f); glVertex2f(-0.98f,0.84f);
+        glEnd();
+        glColor3f(0.5f,0.5f,1.0f);
+        glRasterPos2f(-0.98f,0.85f);
+        const char *dc="DASH"; while(*dc){glutBitmapCharacter(GLUT_BITMAP_HELVETICA_12,*dc);dc++;}
+    }
+
     
-	// CABEÇA
-	quad(posX-0.03f, posY+0.09f, posX+0.03f, posY+0.14f, 1.0f,0.8f,0.6f);
-	
-	// olho
-    float ox = (direcao>0) ? posX+0.017f : posX-0.017f;
-    quad(ox-0.009f, posY+0.119f, ox+0.009f, posY+0.125f, 0.0f,0.0f,0.0f);
-	//braço
-	float oax = (direcao>0) ? posX+0.015f : posX-0.015f;
-	quad(oax-0.009f, posY+0.018f, oax+0.009f, posY+0.068f, 0.3f, 0.0f, 0.5f);
-	
-    // HUD
-    glColor3f(0.4f,0.4f,0.4f);
-    glRasterPos2f(-0.98f, 0.92f);
-    const char *hud="WASD/SPACE=mover/pular  Q=dash  ESC=menu";
-    while(*hud){ glutBitmapCharacter(GLUT_BITMAP_HELVETICA_12,*hud); hud++; }
+    const char *nomes[4]={"Mapa 1 - Floresta","Mapa 2 - Cidade","Mapa 3 - Geleiras","Mapa Final - Pico"};
+    glColor3f(0.5f,0.6f,0.9f);
+    glRasterPos2f(0.25f,0.92f);
+    const char *fn=nomes[faseAtual]; while(*fn){glutBitmapCharacter(GLUT_BITMAP_HELVETICA_12,*fn);fn++;}
+
+    
+    glColor3f(0.20f,0.22f,0.35f);
+    glRasterPos2f(-0.98f,-0.96f);
+    const char *hud="WASD/SPACE=mover/pular  Q=dash  Q+D=dash dir  Q+A=dash esq  Q+W+D/A=diagonal  ESC=menu";
+    while(*hud){glutBitmapCharacter(GLUT_BITMAP_HELVETICA_12,*hud);hud++;}
 
     glutSwapBuffers();
 }
 
 void updateGame(){
-    // Movimento horizontal suavizado
-    float velAlvo = 0.0f;
-    if(kA){ velAlvo=-0.025f; direcao=-1; }
-    if(kD){ velAlvo= 0.025f; direcao= 1; }
-    velX += (velAlvo-velX)*0.3f;
-
-    // Pulo
-    if((kW||kSpace)&&noChao){
-        velY=0.048f;
-        noChao=false;
-        kW=false; kSpace=false; // consome o input
+    
+    if(extraJumpCooldown > 0.0f) extraJumpCooldown -= 0.016f;
+    if(!podeDash){
+        tempoDash += 0.016f;
+        if(tempoDash >= cooldownDash){
+            podeDash = true;
+            tempoDash = 0.0f;
+        }
     }
 
-    // Gravidade
-    velY += gravidade;
-    if(velY<-0.06f) velY=-0.06f;
+    
+    if(isDashing){
+        dashTimer -= 0.016f;
+        
+        velX += (dashVelX - velX) * 0.35f;
+        velY += (dashVelY - velY) * 0.35f;
+        if(dashTimer <= 0.0f){
+            isDashing = false;
+           
+            velX *= 0.5f;
+            velY *= 0.3f;
+        }
+    }
 
-    posX+=velX;
-    posY+=velY;
+   
+    isClinging = false;
+    if(onLeftWall  && kA) isClinging = true;
+    if(onRightWall && kD) isClinging = true;
+
+    if(kSpace && !kSpaceConsumed){
+        bool pulou = false;
+
+        if(isClinging){
+            
+            float jumpX = 0.0f;
+            float jumpY = wallJumpYForce;
+
+            if(kA)      jumpX = -wallJumpXForce;
+            else if(kD) jumpX =  wallJumpXForce;
+            else {
+                if(onLeftWall)  jumpX = 0.17f;
+                if(onRightWall) jumpX = -0.17f;
+            }
+
+            velX = jumpX;
+            velY = jumpY;
+            extraJumpsAvailable = 0;
+            pulou = true;
+        }
+        else if(noChao){
+            velY = jumpForce;
+            jumpsRestantes = maxJumps - 1;
+            noChao = false;
+            pulou = true;
+        }
+        else if(jumpsRestantes > 0){
+            velY = jumpForce * 0.9f;
+            jumpsRestantes--;
+            pulou = true;
+        }
+        else if(extraJumpsAvailable > 0 && extraJumpCooldown <= 0.0f && velY < -0.005f){
+            velY = jumpForce * 0.85f;
+            extraJumpsAvailable = 0;
+            extraJumpCooldown = EXTRA_JUMP_COOLDOWN_TIME;
+            pulou = true;
+        }
+
+        if(pulou){
+            kSpaceConsumed = true;  
+        }
+    }
+
+    
+    float velAlvo = 0.0f;
+    float lerp = (faseAtual==2)?0.10f:0.25f;
+
+    if(kA){ velAlvo = -0.018f; direcao = -1; }
+    if(kD){ velAlvo =  0.018f; direcao =  1; }
+
+    velX += (velAlvo - velX) * lerp;
+
+    
+    if(isDashing){
+        
+    } else if(isClinging){
+        
+        if(velY < clingSlideSpeed) velY = clingSlideSpeed;
+        velX *= 0.6f;
+        jumpsRestantes = maxJumps;
+    } else {
+        velY += gravidade;
+        if(velY < -0.065f) velY = -0.065f;
+    }
+
+    posX += velX;
+    posY += velY;
 
     resolveColisoes();
+    checaSaida();
+    updateMapa();
 
-    // Caiu no buraco = respawn
-    if(posY < -1.2f){ initGame(); }
-    
-    //COOLDOWN DO DASH (2 segundos)
-    if(!podeDash){
-    	tempoDash += 0.016f; // 16ms por frame
-    	
-    	if(tempoDash>=cooldownDash){
-    		podeDash = true;
-    		tempoDash = 0.0f;
-		}
-	}
+  
+    if(posY < -1.2f){
+        Health--;
+        if(Health <= 0){
+            gameState = 0;
+            initGame();
+            return;
+        }
+        posX = -0.75f;
+        posY = -0.70f;
+        velX = 0;
+        velY = 0;
+        noChao = true;
+        extraJumpsAvailable = 1;
+    }
 }
 
 void handleGameInput(unsigned char tecla){
     switch(tecla){
-        case 'a': case 'A': kA=true;    break;
-        case 'd': case 'D': kD=true;    break;
-        case 'w': case 'W': kW=true;    break;
-        case ' ' :  kSpace=true; break;
-        case 'q': case 'Q': // DASH
+        case 'a':case 'A': kA=true;     break;
+        case 'd':case 'D': kD=true;     break;
+        case 'w':case 'W': kW=true;     break;
+        case ' ':          kSpace=true; break;
+        case 'q':case 'Q':
             if(podeDash){
-                velX=0.13f*direcao;
-                velY=0.01f;
                 
-                podeDash=false;
-                tempoDash=0.0f;
+                bool diagDir  = kW && kD;
+                bool diagEsq  = kW && kA;
+                bool horizDir = !kW && kD;
+                bool horizEsq = !kW && kA;
+
+                if(diagDir){
+                    dashVelX =  DASH_FORCA_DIAG;
+                    dashVelY =  DASH_FORCA_DIAG;
+                } else if(diagEsq){
+                    dashVelX = -DASH_FORCA_DIAG;
+                    dashVelY =  DASH_FORCA_DIAG;
+                } else if(horizDir){
+                    dashVelX =  DASH_FORCA;
+                    dashVelY =  0.0f;
+                } else if(horizEsq){
+                    dashVelX = -DASH_FORCA;
+                    dashVelY =  0.0f;
+                } else {
+                    
+                    dashVelX = DASH_FORCA * direcao;
+                    dashVelY = 0.0f;
+                }
+
+                isDashing  = true;
+                dashTimer  = DASH_DURACAO;
+                podeDash   = false;
+                tempoDash  = 0.0f;
             }
             break;
         case 27: gameState=0; initGame(); break;
     }
 }
 
-// Chamado pelo keyboardUp do main
 void handleGameInputUp(unsigned char tecla){
     switch(tecla){
-        case 'a': case 'A': kA=false;    break;
-        case 'd': case 'D': kD=false;    break;
-        case 'w': case 'W': kW=false;    break;
-        case  ' ' :           kSpace=false; break;
+        case 'a':case 'A': kA=false;    break;
+        case 'd':case 'D': kD=false;    break;
+        case 'w':case 'W': kW=false;    break;
+        case ' ':
+            kSpace=false;
+            kSpaceConsumed=false; 
+            break;
     }
 }
