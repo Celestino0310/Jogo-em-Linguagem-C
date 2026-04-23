@@ -12,12 +12,18 @@ int largura= 1920;
 int altura =1080; 
 void render() {
     if (gameState == 0) renderMenu();
-    else                renderGame();
+    else if (gameState == 1 && !pausado) renderGame();
+    else if (gameState == 1 &&  pausado) renderPause();
+    else if (gameState == 2) renderVitoria();
+    else if (gameState == 3) renderDerrota();
 }
 
 void keyboardDown(unsigned char tecla, int x, int y) {
     if (gameState == 0) handleMenuInput(tecla);
-    else                handleGameInput(tecla);
+    else if (gameState == 1 && !pausado) handleGameInput(tecla);
+    else if (gameState == 1 &&  pausado) handlePauseInput(tecla);
+    else if (gameState == 2) handleVitoriaInput(tecla);
+    else if (gameState == 3) handleDerrotaInput(tecla);   
 }
 
 void keyboardUp(unsigned char tecla, int x, int y) {
@@ -49,6 +55,7 @@ int main(int argc, char** argv) {
     glutKeyboardFunc(keyboardDown);
     glutKeyboardUpFunc(keyboardUp);
     glutSpecialFunc(specialDown);
+    glutMouseFunc(handleMenuMouse);
     glutTimerFunc(16, update, 0);
 
     glutMainLoop();
