@@ -1,5 +1,6 @@
 #define GLUT_DISABLE_ATEXIT_HACK
 #define STB_IMAGE_IMPLEMENTATION
+#include "../include/audio.h"
 #include "../include/stb_image.h"
 #include "../include/GL/glut.h"
 #include "../include/mapa.h"
@@ -238,9 +239,9 @@ static Bloco blocosFase0[] = {
     { 0.975f,-1.00f, 1.00f, 1.00f},
     {-1.00f, 0.95f, 0.55f, 1.00f},
     {-0.95f,-1.00f,-0.67f,-0.82f},
-    {-0.67f,-1.00f,-0.30f,-0.98f},
+    {-0.67f,-1.00f,-0.30f,-0.98f},//espinho 
     {-0.30f,-1.00f,-0.10f,-0.60f},
-    {-0.10f,-1.00f, 0.30f,-0.82f},
+    {-0.10f,-1.00f, 0.30f,-0.82f},//espinho 
     { 0.30f,-0.50f, 0.35f,-0.15f},
     { 0.45f,-0.50f, 0.50f,-0.15f},
     { 0.30f,-0.10f, 0.50f,-0.15f},
@@ -282,15 +283,15 @@ static Bloco blocosFase1[] = {
     
     {-0.93f, 0.8f,-0.70f, 1.0f}, // 10 plataforma esq alta
     
-    { 0.10f,-1.00f, 0.25f,-0.90f}, // 11 primeiro bloco espinho
-    { 0.25f,-1.00f, 0.40f,-0.650f}, // 12 espaco espinho direita
+    { 0.10f,-1.00f, 0.25f,-0.90f}, // 11 primeiro bloco espinho//espinho 
+    { 0.25f,-1.00f, 0.40f,-0.650f}, // 12 espaco espinho direita//espinho 
     
     { 0.65f, 0.55f, 0.70f, 1.00f}, // 13 aco saida esq
     { 0.35f, 0.75f, 0.40f, 1.00f}, // 14 aco saida dir
     
-    { 0.40f,-1.00f, 0.70f,-0.80f}, // 15 base central espinho
-    { 0.70f,-1.00f, 0.90f,-0.90f}, // 16 base direita espinho
-    { 0.90f,-1.00f, 0.95f,-0.85f}, // 17 base espinho direita alta
+    { 0.40f,-1.00f, 0.70f,-0.80f}, // 15 base central espinho//espinho 
+    { 0.70f,-1.00f, 0.90f,-0.90f}, // 16 base direita espinho//espinho 
+    { 0.90f,-1.00f, 0.95f,-0.85f}, // 17 base espinho direita alta//espinho 
     
     { 0.85f,-0.20f, 0.90f,0.05f}, // 18 apoio parede
     { 0.90f, -0.40f, 0.95f, 0.25f}, // 19 apoio parede alto
@@ -322,8 +323,8 @@ static Bloco blocosFase2[] = {
 
     { 0.50f,-1.00f, 1.00f, 0.00f}, // 12 base final direita  ? era 1.0f ok
 
-    { 0.12f, 0.30f, 0.37f, 0.38f}, // 13 plataforma aerea alta
-    { 0.10f, 0.10f, 0.20f, 0.30f}, // 14 plataforma aerea baixa
+    { 0.12f, 0.30f, 0.37f, 0.38f}, // 13 plataforma aerea alta//espinho 
+    { 0.10f, 0.10f, 0.20f, 0.30f}, // 14 plataforma aerea baixa//espinho 
 
     { 0.35f,-0.20f, 0.50f,-0.15f}, // 15 madeira 1
     { 0.40f,-0.30f, 0.50f,-0.15f}, // 17 madeira 3 (conecta base)
@@ -345,7 +346,7 @@ static Bloco blocosFase3[] = {
     {-1.00f, 0.10f,-0.90f, 1.00f},
     
     {-0.92f,-0.20f,-0.80f,-0.10f},//enfeite da pedra
-    {-0.92f,-0.20f,-0.80f,-0.10f},//enfeite da pedra
+  
     {-0.92f,-0.20f,-0.80f,-0.10f},//enfeite da pedra embaixo
     
     {-0.40f,-1.00f,-0.30,-0.78f},
@@ -353,12 +354,12 @@ static Bloco blocosFase3[] = {
 	{0.65f,-1.00f, 0.92f,-0.78f},
 	{-0.92f,-1.00f,-0.70f,-0.78f},
 	 
-	{-0.92f, -0.10f,0.60f,0.10f},
+	{-0.50f, -0.10f,-0.10f,0.10f},//espinho 1
 	{0.60f,-0.30f, 0.650f, 0.30f},
 	
-    {-0.60f, 0.10f,-0.50f, 0.30f},
-    {-0.10f, 0.10f,0.00f, 0.30f},
-	{ 0.40f, 0.10f,0.50f, 0.30f},
+    {-0.60f, -0.10f,-0.50f, 0.30f},
+    {-0.10f, -0.10f,0.00f, 0.30f},
+	{ 0.40f, -0.10f,0.50f, 0.30f},
 	
 	{-0.40f,0.70f,-0.45f,0.92f},//atrapalha 1
 	{-0.45f,0.80f,-0.50f,0.92f},//atrapalha 2 emcima
@@ -366,13 +367,14 @@ static Bloco blocosFase3[] = {
 	{ 0.85f,0.80f,0.92f,0.92f},//atrapalha 2 emcima
 
 	//falta esses 5 ainda
-
+    {0.50f,-0.10f,0.60f,0.10f},//espinho 3
+    
     //estalactite 1 (parte do meio superior)
     {-0.10f, 0.30f,-0.05f, 0.45f},
     {-0.05f, 0.30f, 0.00f, 0.45f},
 
     //estalactite 2 (lado direito, perto da parede)
-    { 0.87f, -0.92f, 0.92f, -0.85f},
+    { 0.00f, -0.10f, 0.40f, 0.10f},//espinho 2
     
 
     //estalactite 3 (lado esquerdo, grudado na estrutura)
@@ -380,7 +382,7 @@ static Bloco blocosFase3[] = {
 	
 	//banquinho final
 	
-	{-0.92f, 0.10f,-0.60f,0.4f},
+	{-0.92f, -0.10f,-0.60f,0.4f},
 	{-0.92f, 0.40f,-0.60f,0.45f},//fim do jogo
 	
 
@@ -685,20 +687,27 @@ void updateMapa(){
 
 void avancarFase(){
     faseAtual++;
-    if(faseAtual>3) return;
+    if(faseAtual > 3) return;
     switch(faseAtual){
         case 1:
-            blocos=blocosFase1; numBlocos=sizeof(blocosFase1)/sizeof(Bloco);
-            tipoAtual=tipoFase1;
+            blocos    = blocosFase1;
+            numBlocos = sizeof(blocosFase1)/sizeof(Bloco);
+            tipoAtual = tipoFase1;
+            // continua com MUSICA_1
             break;
         case 2:
-            blocos=blocosFase2; numBlocos=sizeof(blocosFase2)/sizeof(Bloco);
-            tipoAtual=tipoFase2;
+            blocos    = blocosFase2;
+            numBlocos = sizeof(blocosFase2)/sizeof(Bloco);
+            tipoAtual = tipoFase2;
+            // TROCA PARA MUSICA DO GELO ao entrar na fase 3 (indice 2)
+            audioTrocarMusica(MUSICA_2);
             break;
         case 3:
-            blocos=blocosFase3; numBlocos=sizeof(blocosFase3)/sizeof(Bloco);
-            tipoAtual=tipoFase3;
+            blocos    = blocosFase3;
+            numBlocos = sizeof(blocosFase3)/sizeof(Bloco);
+            tipoAtual = tipoFase3;
             initNeve();
             break;
+		
     }
 }
