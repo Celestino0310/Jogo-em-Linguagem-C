@@ -1,6 +1,7 @@
 #define GLUT_DISABLE_ATEXIT_HACK
 #include "../include/game.h"
 #include "../include/mapa.h"
+#include "../include/espinho.h"
 #include "../include/GL/glut.h"
 #include <stdbool.h>
 #include <stdlib.h>
@@ -23,8 +24,12 @@ static float tempoDash    =  0.0f;
 static float cooldownDash =  3.0f;
 static bool  kA=false, kD=false, kW=false, kSpace=false;
 
+// Posicao de respawn da fase atual
+static float respawnX = -0.75f;
+static float respawnY = -0.70f;
+
 // ============================================================
-// COLISAO
+// COLISAO COM BLOCOS
 // ============================================================
 #define PW 0.055f
 #define PH 0.090f
@@ -33,9 +38,9 @@ static bool colideCom(Bloco b){
     return posX+PW>b.x1 && posX-PW<b.x2 &&
            posY+PH>b.y1 && posY<b.y2;
 }
+
 static void resolveColisoes(){
-    int i;
-	noChao=false;
+    int i; noChao=false;
     float atrito=(faseAtual==2)?0.05f:0.28f;
     for(i=0;i<numBlocos;i++){
         if(!colideCom(blocos[i])) continue;
@@ -57,6 +62,20 @@ static void resolveColisoes(){
     if(noChao) velX*=(1.0f-atrito);
 }
 
+// ============================================================
+// RESPAWN (buraco ou espinho)
+// ============================================================
+static void morrer() {
+    Health--;
+    if(Health <= 0){ gameState=0; initGame(); return; }
+    // volta ao inicio da fase atual
+    posX=respawnX; posY=respawnY;
+    velX=0; velY=0; noChao=true;
+}
+
+// ============================================================
+// SAIDA DE FASE
+// ============================================================
 static void checaSaida(){
     int idx=indiceSaida();
     if(idx<0||idx>=numBlocos) return;
@@ -66,6 +85,7 @@ static void checaSaida(){
         if(faseAtual<3){
             avancarFase();
             posX=-0.75f; posY=-0.70f; velX=0; velY=0; noChao=true;
+            respawnX=-0.75f; respawnY=-0.70f;
         } else {
             gameState=0; initGame();
         }
@@ -78,13 +98,15 @@ static void checaSaida(){
 void initGame(){
     Health=3;
     posX=-0.75f; posY=-0.80f;
+    respawnX=-0.75f; respawnY=-0.70f;
     velX=0; velY=0; noChao=true; podeDash=true; tempoDash=0;
     kA=kD=kW=kSpace=false;
-    initMapa(); // inicializa o mapa
+    initMapa();
 }
 
 void renderGame(){
-    renderMapa(); // desenha fundo + blocos
+    renderMapa();         // fundo + blocos
+    renderEspinhos(faseAtual); // espinhos sobre os blocos
 
     // personagem
     glColor3f(0.6f,0.2f,0.8f);
@@ -96,8 +118,10 @@ void renderGame(){
     glEnd();
     glColor3f(0,0,0); glLineWidth(1.5f);
     glBegin(GL_LINE_LOOP);
-        glVertex2f(posX-(PW-0.025f),posY); glVertex2f(posX+(PW-0.025f),posY);
-        glVertex2f(posX+(PW-0.025f),posY+PH); glVertex2f(posX-(PW-0.025f),posY+PH);
+        glVertex2f(posX-(PW-0.025f),posY);
+        glVertex2f(posX+(PW-0.025f),posY);
+        glVertex2f(posX+(PW-0.025f),posY+PH);
+        glVertex2f(posX-(PW-0.025f),posY+PH);
     glEnd();
     // cabeca
     glColor3f(1.0f,0.8f,0.6f);
@@ -146,19 +170,21 @@ void renderGame(){
         glEnd();
         glColor3f(0.5f,0.5f,1.0f);
         glRasterPos2f(-0.98f,0.85f);
-        const char *dc="DASH"; while(*dc){glutBitmapCharacter(GLUT_BITMAP_HELVETICA_12,*dc);dc++;}
+        const char *dc="DASH";
+        while(*dc){glutBitmapCharacter(GLUT_BITMAP_HELVETICA_12,*dc);dc++;}
     }
 
     // nome fase
-    const char *nomes[4]={"Mapa 1 - Floresta","Mapa 2 - Cidade","Mapa 3 - Geleiras","Mapa Final - Pico"};
+    const char *nomes[4]={"Mapa 1","Mapa 2","Mapa 3 - Geleiras","Mapa Final"};
     glColor3f(0.5f,0.6f,0.9f);
     glRasterPos2f(0.25f,0.92f);
-    const char *fn=nomes[faseAtual]; while(*fn){glutBitmapCharacter(GLUT_BITMAP_HELVETICA_12,*fn);fn++;}
+    const char *fn=nomes[faseAtual];
+    while(*fn){glutBitmapCharacter(GLUT_BITMAP_HELVETICA_12,*fn);fn++;}
 
     // dica
     glColor3f(0.20f,0.22f,0.35f);
     glRasterPos2f(-0.98f,-0.96f);
-    const char *hud="WASD/SPACE=mover/pular  Q=dash(3s)  ESC=menu";
+    const char *hud="WASD/SPACE=pular  Q=dash(3s)  M=mudo  ESC=menu";
     while(*hud){glutBitmapCharacter(GLUT_BITMAP_HELVETICA_12,*hud);hud++;}
 
     glutSwapBuffers();
@@ -183,15 +209,22 @@ void updateGame(){
     checaSaida();
     updateMapa();
 
+    // COLISAO COM ESPINHOS
+    if(checaEspinhoColisao(posX, posY, PW, PH, faseAtual)){
+        morrer();
+        return;
+    }
+
+    // Caiu no buraco
+    if(posY < -1.2f){
+        morrer();
+        return;
+    }
+
+    // cooldown dash
     if(!podeDash){
         tempoDash+=0.016f;
         if(tempoDash>=cooldownDash){ podeDash=true; tempoDash=0.0f; }
-    }
-
-    if(posY<-1.2f){
-        Health--;
-        if(Health<=0){ gameState=0; initGame(); return; }
-        posX=-0.75f; posY=-0.70f; velX=0; velY=0; noChao=true;
     }
 }
 
