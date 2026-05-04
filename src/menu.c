@@ -295,3 +295,23 @@ void handleMenuSpecial(int tecla) {
         opcaoSelecionada = (opcaoSelecionada+1)%TOTAL_OPCOES;
     glutPostRedisplay();
 }
+
+void handleMenuMouse(int button, int state, int x, int y) {
+    if (subTela != 0) return;
+    if (button != GLUT_LEFT_BUTTON || state != GLUT_UP) return;
+    int alturaJanela = glutGet(GLUT_WINDOW_HEIGHT);
+    float oy = 1.0f - 2.0f * ((float)y / alturaJanela);
+    float centros[] = { 0.38f, 0.15f, -0.08f, -0.31f };
+    int i;
+    for (i = 0; i < TOTAL_OPCOES; i++) {
+        if (oy >= centros[i]-0.055f && oy <= centros[i]+0.085f) {
+            opcaoSelecionada = i;
+            if (i==0) gameState=1;
+            if (i==1) subTela=1;
+            if (i==2) subTela=2;
+            if (i==3) { audioFechar(); exit(0); }
+            glutPostRedisplay();
+            return;
+        }
+    }
+}
