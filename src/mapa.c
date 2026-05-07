@@ -1,5 +1,6 @@
 #define GLUT_DISABLE_ATEXIT_HACK
 #define STB_IMAGE_IMPLEMENTATION
+#include "../include/audio.h"
 #include "../include/stb_image.h"
 #include "../include/GL/glut.h"
 #include "../include/mapa.h"
@@ -13,7 +14,7 @@
 // ============================================================
 Bloco *blocos    = NULL;
 int    numBlocos = 0;
-int    faseAtual = 0;
+int    faseAtual = 0;//aqui fica  0  normalmente mas to testando começar na 2
 
 // ============================================================
 // TEXTURAS
@@ -76,8 +77,8 @@ static void initTexturas() {
 // Desenha quad texturizado com TILING
 // tileX/tileY = quantas vezes a textura repete no bloco
 static void quadTex(float x1,float y1,float x2,float y2,
-                    int texIdx, float tileX, float tileY,
-                    float r,float g,float b) {
+     int texIdx, float tileX, float tileY,
+    float r,float g,float b) {
     if (texCarregada[texIdx]) {
         glEnable(GL_TEXTURE_2D);
         glBindTexture(GL_TEXTURE_2D, texIDs[texIdx]);
@@ -238,9 +239,9 @@ static Bloco blocosFase0[] = {
     { 0.975f,-1.00f, 1.00f, 1.00f},
     {-1.00f, 0.95f, 0.55f, 1.00f},
     {-0.95f,-1.00f,-0.67f,-0.82f},
-    {-0.67f,-1.00f,-0.30f,-0.98f},
+    {-0.67f,-1.00f,-0.30f,-0.98f},//espinho 
     {-0.30f,-1.00f,-0.10f,-0.60f},
-    {-0.10f,-1.00f, 0.30f,-0.82f},
+    {-0.10f,-1.00f, 0.30f,-0.82f},//espinho 
     { 0.30f,-0.50f, 0.35f,-0.15f},
     { 0.45f,-0.50f, 0.50f,-0.15f},
     { 0.30f,-0.10f, 0.50f,-0.15f},
@@ -253,7 +254,7 @@ static Bloco blocosFase0[] = {
     {-0.875f,0.60f,-0.65f,  0.55f},
     {-0.95f, 0.95f,-0.875f, 0.30f},
     {0.885f,-1.00f, 0.975f,-0.60f},
-    { 0.45f, 0.95f, 0.50f,  0.55f},
+    { 0.45f, 0.55f, 0.50f,  0.95f},
     { 0.35f,-0.35f, 0.45f, -0.30f},
     {0.87f,  0.25f, 0.97f,  0.70f},
     {0.15f,  0.95f, 0.45f,  0.88f},
@@ -263,85 +264,129 @@ static Bloco blocosFase0[] = {
 };
 
 static Bloco blocosFase1[] = {
-    {-1.00f,-1.00f,-0.92f, 1.00f},
-    { 0.92f,-1.00f, 1.00f, 1.00f},
-    {-1.00f, 0.92f, 1.00f, 1.00f},
-    {-0.92f,-1.00f,-0.55f,-0.82f},
-    {-0.20f,-1.00f, 0.15f,-0.82f},
-    { 0.50f,-1.00f, 0.92f,-0.82f},
-    {-0.90f,-0.82f,-0.72f, 0.50f},
-    {-0.93f, 0.48f,-0.69f, 0.60f},
-    {-0.87f, 0.10f,-0.75f, 0.20f},
-    {-0.87f, 0.30f,-0.75f, 0.40f},
-    {-0.68f,-0.48f,-0.38f,-0.38f},
-    {-0.55f,-0.08f,-0.25f, 0.02f},
-    {-0.65f, 0.28f,-0.35f, 0.38f},
-    {-0.50f, 0.60f,-0.20f, 0.70f},
-    {-0.18f,-0.82f,-0.08f, 0.30f},
-    { 0.08f, 0.00f, 0.18f, 0.30f},
-    {-0.18f, 0.20f, 0.18f, 0.30f},
-    {-0.14f,-0.40f, 0.14f,-0.30f},
-    { 0.22f,-0.82f, 0.32f, 0.40f},
-    { 0.19f, 0.38f, 0.35f, 0.48f},
-    { 0.40f,-0.82f, 0.92f,-0.72f},
-    { 0.55f,-0.72f, 0.92f,-0.62f},
-    { 0.65f,-0.42f, 0.92f,-0.32f},
-    { 0.72f,-0.12f, 0.92f,-0.02f},
-    { 0.78f, 0.20f, 0.92f, 0.30f},
-    { 0.70f, 0.78f, 0.92f, 0.80f},
+    {-1.00f,-1.0f,-0.92f, 1.00f}, // 0  parede esquerda
+    { 0.95f,-1.00f, 1.00f, 0.75f}, // 1  parede direita
+    {-1.00f, 0.92f, 0.65f, 1.00f}, // 2  telhado
+    
+    {-0.92f,-1.00f,-0.55f,-0.82f}, // 3  spawn
+  
+    
+    {-0.25f,-0.50f,-0.10f,-0.05f}, // 4
+	{-0.10f,-0.20f, 0.00f,-0.05f}, // 5
+	{ 0.00f,-0.30f, 0.05f,-0.05f}, // EXTRA 2
+    
+    {-0.75f, 0.10f,-0.50f, 0.30f}, // 6  bloco de apoio 2 esq
+    {-0.60f,-0.20f,-0.50f, 0.10f}, // 7  bloco de apoio 2 dir
+    
+    {-0.70f, 0.85f,-0.50f, 1.00f}, // 8  bloco teto esq
+    {-0.20f, 0.80f, 0.00f, 1.05f}, // 9  bloco teto centro
+    
+    {-0.93f, 0.8f,-0.70f, 1.0f}, // 10 plataforma esq alta
+    
+    { 0.10f,-1.00f, 0.25f,-0.90f}, // 11 primeiro bloco espinho//espinho 
+    { 0.25f,-1.00f, 0.40f,-0.650f}, // 12 espaco espinho direita//espinho 
+    
+    { 0.65f, 0.55f, 0.70f, 1.00f}, // 13 aco saida esq
+    { 0.35f, 0.75f, 0.40f, 1.00f}, // 14 aco saida dir
+    
+    { 0.40f,-1.00f, 0.70f,-0.80f}, // 15 base central espinho//espinho 
+    { 0.70f,-1.00f, 0.90f,-0.90f}, // 16 base direita espinho//espinho 
+    { 0.90f,-1.00f, 0.95f,-0.85f}, // 17 base espinho direita alta//espinho 
+    
+    { 0.85f,-0.20f, 0.90f,0.05f}, // 18 apoio parede
+    { 0.90f, -0.40f, 0.95f, 0.25f}, // 19 apoio parede alto
+    
+    { 0.45f, -0.25f, 0.50f, 0.20f}, // 20 obstaculo moeda esq
+    { 0.50f, -0.075f, 0.55f, 0.22f}, // 21 obstaculo moeda dir
+    { 0.40f,-0.15f, 0.45f,0.20f}, // 23 bloco pequeno junto ao spawn
+    
+    {-0.55f,-1.00f,-0.50f,-0.87f}, // 
+    
+    { 0.95f, 0.75f, 1.00f, 0.80f}, // 25 SAIDA
 };
-
 static Bloco blocosFase2[] = {
-    {-1.00f,-1.00f,-0.92f, 1.00f},
-    { 0.92f,-1.00f, 1.00f, 1.00f},
-    {-1.00f, 0.92f, 1.00f, 1.00f},
-    {-0.92f,-1.00f,-0.65f,-0.80f},
-    {-0.10f,-1.00f, 0.25f,-0.80f},
-    { 0.60f,-1.00f, 0.92f,-0.80f},
-    {-0.88f,-0.45f,-0.60f,-0.35f},
-    {-0.50f,-0.15f,-0.22f,-0.05f},
-    { 0.00f,-0.40f, 0.28f,-0.30f},
-    { 0.35f,-0.10f, 0.62f, 0.00f},
-    {-0.75f, 0.15f,-0.48f, 0.25f},
-    {-0.30f, 0.10f, 0.00f, 0.20f},
-    { 0.10f, 0.15f, 0.38f, 0.25f},
-    { 0.50f, 0.20f, 0.78f, 0.30f},
-    {-0.60f, 0.45f,-0.32f, 0.55f},
-    {-0.15f, 0.42f, 0.15f, 0.52f},
-    { 0.28f, 0.48f, 0.60f, 0.58f},
-    {-0.45f, 0.72f,-0.15f, 0.82f},
-    { 0.10f, 0.70f, 0.45f, 0.80f},
-    {-0.08f,-0.80f, 0.08f,-0.20f},
-    { 0.60f, 0.78f, 0.92f, 0.86f},
-};
+    {-1.00f, 0.10f,-0.90f, 1.00f}, // 0  parede esq cima
+    {-1.00f, 0.05f,-0.80f, 0.10f}, // 1  parede esq meio
+    {-1.00f,-1.00f,-0.92f,-0.35f}, // 2  parede esq baixo
+    {-0.92f,-0.50f,-0.80f,-0.35f}, // 3  apoio parede esq  ? faltava o f
 
+    {-0.75f,-1.00f,-0.50f,-0.92f}, // 4  spawn (chao esq)
+    {-0.55f,-1.00f,-0.45f,-0.75f}, // 5  bloco de apoio spawn
+
+    {-0.45f,-1.00f,-0.25f, 0.20f}, // 6  pilar central grande
+    {-0.25f,-0.50f, -0.20f, 0.20f}, // 7  pilar central medio
+    { -0.20f,-0.30f,-0.15f, 0.20f}, // 8  pilar central fino
+
+    {-0.250f,-1.00f, 0.10f,-0.90f}, // 9  espinho 1
+    { 0.10f,-1.00f, 0.20f,-0.80f}, // 10 espinho 2
+    { 0.20f,-1.00f, 0.50f,-0.75f}, // 11 espinho 3
+
+    { 0.50f,-1.00f, 1.00f, 0.00f}, // 12 base final direita  ? era 1.0f ok
+
+    { 0.12f, 0.30f, 0.37f, 0.38f}, // 13 plataforma aerea alta//espinho 
+    { 0.10f, 0.10f, 0.20f, 0.30f}, // 14 plataforma aerea baixa//espinho 
+
+    { 0.35f,-0.20f, 0.50f,-0.15f}, // 15 madeira 1
+    { 0.40f,-0.30f, 0.50f,-0.15f}, // 17 madeira 3 (conecta base)
+    
+    { 0.35f,-0.65f, 0.50f,-0.60f}, // 16 madeira 2
+  
+
+    { 0.950f,-1.00f, 1.0f, 1.0f}, // 18 parede direita  ? substituiu o bloco quebrado
+    
+    {-0.92f,-1.00f,-0.75f,-0.92f}, // 4  spawn (chao esq)
+
+    { 0.85f, 0.00f, 0.950f, 0.10f}, // 20 SAIDA  ? obrigatoriamente no indice 20
+};
 static Bloco blocosFase3[] = {
     {-1.00f,-1.00f,-0.92f, 1.00f},
     { 0.92f,-1.00f, 1.00f, 1.00f},
     {-1.00f, 0.92f, 1.00f, 1.00f},
     {-0.92f,-1.00f,-0.70f,-0.78f},
-    {-0.55f,-1.00f,-0.30f,-0.82f},
-    {-0.15f,-1.00f, 0.10f,-0.75f},
-    { 0.22f,-1.00f, 0.45f,-0.80f},
-    { 0.58f,-1.00f, 0.92f,-0.76f},
-    {-0.88f,-0.42f,-0.58f,-0.32f},
-    {-0.70f,-0.08f,-0.42f, 0.02f},
-    {-0.38f,-0.35f,-0.10f,-0.25f},
-    {-0.20f,-0.02f, 0.10f, 0.08f},
-    { 0.05f,-0.38f, 0.32f,-0.28f},
-    { 0.28f,-0.05f, 0.55f, 0.05f},
-    { 0.50f,-0.42f, 0.78f,-0.32f},
-    { 0.62f,-0.08f, 0.90f, 0.02f},
-    {-0.82f, 0.22f,-0.55f, 0.32f},
-    {-0.50f, 0.18f,-0.22f, 0.28f},
-    {-0.12f, 0.22f, 0.18f, 0.32f},
-    { 0.22f, 0.18f, 0.52f, 0.28f},
-    { 0.58f, 0.25f, 0.88f, 0.35f},
-    {-0.72f, 0.50f,-0.45f, 0.60f},
-    {-0.35f, 0.48f,-0.05f, 0.58f},
-    { 0.08f, 0.52f, 0.38f, 0.62f},
-    { 0.45f, 0.55f, 0.75f, 0.65f},
-    {-0.20f, 0.78f, 0.20f, 0.86f},
+    {-1.00f, 0.10f,-0.90f, 1.00f},
+    
+    {-0.92f,-0.20f,-0.80f,-0.10f},//enfeite da pedra
+  
+    {-0.92f,-0.20f,-0.80f,-0.10f},//enfeite da pedra embaixo
+    
+    {-0.40f,-1.00f,-0.30,-0.78f},
+    {0.10f,-1.00f, 0.20f,-0.78f},
+	{0.65f,-1.00f, 0.92f,-0.78f},
+	{-0.92f,-1.00f,-0.70f,-0.78f},
+	 
+	{-0.50f, -0.10f,-0.10f,0.10f},//espinho 1
+	{0.60f,-0.30f, 0.650f, 0.30f},
+	
+    {-0.60f, -0.10f,-0.50f, 0.30f},
+    {-0.10f, -0.10f,0.00f, 0.30f},
+	{ 0.40f, -0.10f,0.50f, 0.30f},
+	
+	{-0.40f,0.70f,-0.45f,0.92f},//atrapalha 1
+	{-0.45f,0.80f,-0.50f,0.92f},//atrapalha 2 emcima
+	
+	{ 0.85f,0.80f,0.92f,0.92f},//atrapalha 2 emcima
+
+	//falta esses 5 ainda
+    {0.50f,-0.10f,0.60f,0.10f},//espinho 3
+    
+    //estalactite 1 (parte do meio superior)
+    {-0.10f, 0.30f,-0.05f, 0.45f},
+    {-0.05f, 0.30f, 0.00f, 0.45f},
+
+    //estalactite 2 (lado direito, perto da parede)
+    { 0.00f, -0.10f, 0.40f, 0.10f},//espinho 2
+    
+
+    //estalactite 3 (lado esquerdo, grudado na estrutura)
+    {-0.60f, 0.30f,-0.55f, 0.45f},
+	
+	//banquinho final
+	
+	{-0.92f, -0.10f,-0.60f,0.4f},
+	{-0.92f, 0.40f,-0.60f,0.45f},//fim do jogo
+	
+
+    
 };
 
 // ============================================================
@@ -570,7 +615,7 @@ int indiceSaida(){
     if(faseAtual==0) return 25;
     if(faseAtual==1) return 25;
     if(faseAtual==2) return 20;
-    if(faseAtual==3) return 25;
+    if(faseAtual==3) return 25;//alterei de 25 pra 20
     return -1;
 }
 
@@ -642,20 +687,27 @@ void updateMapa(){
 
 void avancarFase(){
     faseAtual++;
-    if(faseAtual>3) return;
+    if(faseAtual > 3) return;
     switch(faseAtual){
         case 1:
-            blocos=blocosFase1; numBlocos=sizeof(blocosFase1)/sizeof(Bloco);
-            tipoAtual=tipoFase1;
+            blocos    = blocosFase1;
+            numBlocos = sizeof(blocosFase1)/sizeof(Bloco);
+            tipoAtual = tipoFase1;
+            // continua com MUSICA_1
             break;
         case 2:
-            blocos=blocosFase2; numBlocos=sizeof(blocosFase2)/sizeof(Bloco);
-            tipoAtual=tipoFase2;
+            blocos    = blocosFase2;
+            numBlocos = sizeof(blocosFase2)/sizeof(Bloco);
+            tipoAtual = tipoFase2;
+            // TROCA PARA MUSICA DO GELO ao entrar na fase 3 (indice 2)
+            audioTrocarMusica(MUSICA_2);
             break;
         case 3:
-            blocos=blocosFase3; numBlocos=sizeof(blocosFase3)/sizeof(Bloco);
-            tipoAtual=tipoFase3;
+            blocos    = blocosFase3;
+            numBlocos = sizeof(blocosFase3)/sizeof(Bloco);
+            tipoAtual = tipoFase3;
             initNeve();
             break;
+		
     }
 }

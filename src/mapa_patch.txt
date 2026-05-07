@@ -1,0 +1,30 @@
+// Substitua a funcao avancarFase() no seu mapa.c por esta:
+
+void avancarFase(){
+    faseAtual++;
+    if(faseAtual > 3) return;
+    switch(faseAtual){
+        case 1:
+            blocos    = blocosFase1;
+            numBlocos = sizeof(blocosFase1)/sizeof(Bloco);
+            tipoAtual = tipoFase1;
+            // continua com MUSICA_1
+            break;
+        case 2:
+            blocos    = blocosFase2;
+            numBlocos = sizeof(blocosFase2)/sizeof(Bloco);
+            tipoAtual = tipoFase2;
+            // TROCA PARA MUSICA DO GELO ao entrar na fase 3 (indice 2)
+            audioTrocarMusica(MUSICA_2);
+            break;
+        case 3:
+            blocos    = blocosFase3;
+            numBlocos = sizeof(blocosFase3)/sizeof(Bloco);
+            tipoAtual = tipoFase3;
+            initNeve();
+            break;
+    }
+}
+
+// E adicione no topo do mapa.c:
+// #include "../include/audio.h"

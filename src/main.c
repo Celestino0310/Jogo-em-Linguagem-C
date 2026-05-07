@@ -2,6 +2,7 @@
 #include "../include/GL/glut.h"
 #include "../include/menu.h"
 #include "../include/game.h"
+#include "../include/audio.h"
 #include <stdio.h>
 #include <stdbool.h>
 #include <stdlib.h>
@@ -42,6 +43,10 @@ int main(int argc, char** argv) {
     glutInitWindowPosition(200, 200);
     glutCreateWindow("Althea");
 
+    // ? ESSAS DUAS LINHAS ESTAVAM FALTANDO
+    audioInit();
+    audioTocarMusica(MUSICA_1);
+
     initMenu();
     initGame();
 
@@ -52,5 +57,7 @@ int main(int argc, char** argv) {
     glutTimerFunc(16, update, 0);
 
     glutMainLoop();
+
+    audioFechar(); // ? também faltava
     return 0;
 }
