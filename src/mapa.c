@@ -728,11 +728,12 @@ void avancarFase(){
 typedef struct { float x, y; bool ativa; } Moeda;
 
 static Moeda moedasFase[4][MAX_MOEDAS] = {
-    { {-0.20f, -0.50f, true}, { 0.40f, -0.05f, true} }, // fase 0
-    { {-0.75f, -0.72f, true}, {-0.35f,  0.08f, true} }, // fase 1
-    { {-0.70f, -0.78f, true}, { 0.65f, -0.65f, true} }, // fase 2
-    { {-0.75f,  0.25f, true}, { 0.75f,  0.25f, true} }, // fase 3
+    { {-0.20f, -0.10f, true}, { 0.40f,  0.05f, true} }, // fase 0
+    { {-0.75f, -0.70f, true}, {-0.35f,  0.15f, true} }, // fase 1
+    { { 0.0f, -0.20f, true}, { 0.40f, -0.50f, true} }, // fase 2
+    { {-0.05f,  0.60f, true}, { 0.75f,  0.65f, true} }, // fase 3
 };
+
 
 static int moedasPegas = 0;
 

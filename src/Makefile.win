@@ -4,8 +4,8 @@
 CPP      = g++.exe -D__DEBUG__
 CC       = gcc.exe -D__DEBUG__
 WINDRES  = windres.exe
-OBJ      = menu.o main.o mapa.o audio.o "../../../../Downloads/game\ (2).o" espinho.o
-LINKOBJ  = menu.o main.o mapa.o audio.o "../../../../Downloads/game (2).o" espinho.o
+OBJ      = menu.o main.o mapa.o audio.o "../../../../Downloads/game\ .o" espinho.o
+LINKOBJ  = menu.o main.o mapa.o audio.o "../../../../Downloads/game .o" espinho.o
 LIBS     = -L"C:/Program Files (x86)/Dev-Cpp/MinGW64/lib32" -L"C:/Program Files (x86)/Dev-Cpp/MinGW64/x86_64-w64-mingw32/lib32" -static-libgcc -L"C:/Users/gabri/Desktop/glut-devc" -L"C:/Users/gabri/OneDrive/Desktop/Althea/lib" -lbass -lglut32 -lglu32 -lopengl32 -lwinmm -m32 -g3
 INCS     = -I"C:/Program Files (x86)/Dev-Cpp/MinGW64/include" -I"C:/Program Files (x86)/Dev-Cpp/MinGW64/x86_64-w64-mingw32/include" -I"C:/Program Files (x86)/Dev-Cpp/MinGW64/lib/gcc/x86_64-w64-mingw32/4.9.2/include"
 CXXINCS  = -I"C:/Program Files (x86)/Dev-Cpp/MinGW64/include" -I"C:/Program Files (x86)/Dev-Cpp/MinGW64/x86_64-w64-mingw32/include" -I"C:/Program Files (x86)/Dev-Cpp/MinGW64/lib/gcc/x86_64-w64-mingw32/4.9.2/include" -I"C:/Program Files (x86)/Dev-Cpp/MinGW64/lib/gcc/x86_64-w64-mingw32/4.9.2/include/c++"
@@ -36,8 +36,8 @@ mapa.o: mapa.c
 audio.o: audio.c
 	$(CC) -c audio.c -o audio.o $(CFLAGS)
 
-"../../../../Downloads/game\ (2).o": ../../../../Downloads/game\ (2).c
-	$(CC) -c "../../../../Downloads/game (2).c" -o "../../../../Downloads/game (2).o" $(CFLAGS)
+"../../../../Downloads/game\ .o": ../../../../Downloads/game\ .c
+	$(CC) -c "../../../../Downloads/game .c" -o "../../../../Downloads/game .o" $(CFLAGS)
 
 espinho.o: espinho.c
 	$(CC) -c espinho.c -o espinho.o $(CFLAGS)
