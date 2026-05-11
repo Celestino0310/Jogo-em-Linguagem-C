@@ -1,0 +1,455 @@
+#define GLUT_DISABLE_ATEXIT_HACK
+#include "../include/game.h"
+#include "../include/mapa.h"
+#include "../include/espinho.h"
+#include "../include/anim.h"
+#include "../include/GL/glut.h"
+#include <stdbool.h>
+#include <stdlib.h>
+#include <stdio.h>
+
+extern int gameState;
+
+bool pausado = false;
+static int   opcaoPause   = 0;
+static bool  vitoriaFinal = false;
+static float timerFase    = 0.0f;
+static float timerTotal   = 0.0f;
+
+// ============================================================
+// JOGADOR
+// ============================================================
+static int   Health       = 3;
+static float posX         = -0.75f;
+static float posY         = -0.80f;
+static float velX         =  0.0f;
+static float velY         =  0.0f;
+static float gravidade    = -0.002f;
+static bool  noChao       = true;
+static bool  podeDash     = true;
+static int   direcao      =  1;
+static float tempoDash    =  0.0f;
+static float cooldownDash =  3.0f;
+static bool  kA=false, kD=false, kW=false, kSpace=false;
+
+static float respawnX = -0.75f;
+static float respawnY = -0.70f;
+
+// ============================================================
+// COLISAO
+// ============================================================
+#define PW 0.055f
+#define PH 0.090f
+
+static bool colideCom(Bloco b){
+    return posX+PW>b.x1 && posX-PW<b.x2 &&
+           posY+PH>b.y1 && posY<b.y2;
+}
+
+static void resolveColisoes(){
+    int i; noChao=false;
+    float atrito=(faseAtual==2)?0.05f:0.28f;
+    for(i=0;i<numBlocos;i++){
+        if(!colideCom(blocos[i])) continue;
+        Bloco b=blocos[i];
+        float oB=b.y2-posY;
+        float oC=(posY+PH)-b.y1;
+        float oD=(posX+PW)-b.x1;
+        float oE=b.x2-(posX-PW);
+        float mH=oB<oC?oB:oC;
+        float mV=oD<oE?oD:oE;
+        if(mH<mV){
+            if(oB<oC){ posY=b.y2; velY=0; noChao=true; podeDash=true; }
+            else      { posY=b.y1-PH; velY=0; }
+        } else {
+            if(oD<oE) posX-=oD; else posX+=oE;
+            velX=0;
+        }
+    }
+    if(noChao) velX*=(1.0f-atrito);
+}
+
+// ============================================================
+// MORRER / RESPAWN
+// ============================================================
+static void morrer() {
+    Health--;
+    if(Health <= 0){ gameState=3; return; }
+    posX=respawnX; posY=respawnY;
+    velX=0; velY=0; noChao=true;
+}
+
+// ============================================================
+// SAIDA DE FASE
+// ============================================================
+static void checaSaida(){
+    int idx=indiceSaida();
+    if(idx<0||idx>=numBlocos) return;
+    Bloco s=blocos[idx];
+    if(posX+PW>s.x1 && posX-PW<s.x2 &&
+       posY>=s.y2-0.08f && posY<=s.y2+0.08f && noChao){
+        kA=false; kD=false; kW=false; kSpace=false;
+        if(faseAtual<3){
+            vitoriaFinal = false;
+            gameState = 2;
+        } else {
+            vitoriaFinal = true;
+            gameState = 2;
+        }
+    }
+}
+
+// ============================================================
+// HELPER TEXTO
+// ============================================================
+static void drawText(float x, float y, const char *txt, void *fonte){
+    glRasterPos2f(x, y);
+    while(*txt){ glutBitmapCharacter(fonte, *txt); txt++; }
+}
+
+// ============================================================
+// PUBLICAS
+// ============================================================
+void initGame(){
+    Health=3;
+    posX=-0.75f; posY=-0.80f;
+    respawnX=-0.75f; respawnY=-0.70f;
+    velX=0; velY=0; noChao=true; podeDash=true; tempoDash=0;
+    kA=kD=kW=kSpace=false;
+    pausado=false; opcaoPause=0;
+    vitoriaFinal=false;
+    timerFase=0.0f; timerTotal=0.0f;
+    initMapa();
+    animInit(); /* carrega spritesheet da Althea (branch Diogo) */
+}
+
+// ============================================================
+// RENDER GAME
+// ============================================================
+void renderGame(){
+    renderMapa();
+    renderEspinhos(faseAtual);
+
+    /*
+     * Personagem: usa o sistema de animacao do Diogo (anim.c).
+     * Se althea_sheet.png nao for encontrada, animDraw() cai em
+     * modo fallback e desenha o retangulo roxo original.
+     */
+    animDraw(posX, posY, (PW-0.025f)*3.0f, PH);
+
+    /* HUD vidas */
+    int h;
+    for(h=0;h<3;h++){
+        float cor=(h<Health)?0.9f:0.2f;
+        glColor3f(cor,0.1f,0.1f);
+        glBegin(GL_QUADS);
+            glVertex2f(-0.98f+h*0.09f,0.88f); glVertex2f(-0.90f+h*0.09f,0.88f);
+            glVertex2f(-0.90f+h*0.09f,0.95f); glVertex2f(-0.98f+h*0.09f,0.95f);
+        glEnd();
+        glColor3f(0.5f,0.0f,0.0f); glLineWidth(1.0f);
+        glBegin(GL_LINE_LOOP);
+            glVertex2f(-0.98f+h*0.09f,0.88f); glVertex2f(-0.90f+h*0.09f,0.88f);
+            glVertex2f(-0.90f+h*0.09f,0.95f); glVertex2f(-0.98f+h*0.09f,0.95f);
+        glEnd();
+    }
+
+    /* HUD cooldown dash */
+    if(!podeDash){
+        float prog=tempoDash/cooldownDash;
+        glColor3f(0.2f,0.2f,0.5f);
+        glBegin(GL_QUADS);
+            glVertex2f(-0.98f,0.80f); glVertex2f(-0.98f+prog*0.38f,0.80f);
+            glVertex2f(-0.98f+prog*0.38f,0.84f); glVertex2f(-0.98f,0.84f);
+        glEnd();
+        glColor3f(0.5f,0.5f,1.0f);
+        drawText(-0.98f, 0.85f, "DASH", GLUT_BITMAP_HELVETICA_12);
+    }
+
+    /* nome fase */
+    const char *nomes[4]={"Mapa 1 - Floresta","Mapa 2 - Cidade","Mapa 3 - Geleiras","Mapa Final - Pico"};
+    glColor3f(0.5f,0.6f,0.9f);
+    drawText(0.25f, 0.92f, nomes[faseAtual], GLUT_BITMAP_HELVETICA_12);
+
+    /* timer - canto superior direito */
+    char bufTimer[32];
+    int min  = (int)(timerFase / 60.0f);
+    int seg  = (int)(timerFase) % 60;
+    int cent = (int)((timerFase - (int)timerFase) * 100);
+    sprintf(bufTimer, "%02d:%02d.%02d", min, seg, cent);
+    glColor3f(0.0f, 0.0f, 0.0f);
+    glBegin(GL_QUADS);
+        glVertex2f(0.60f,0.83f); glVertex2f(0.99f,0.83f);
+        glVertex2f(0.99f,0.97f); glVertex2f(0.60f,0.97f);
+    glEnd();
+    glColor3f(0.3f,0.3f,0.3f); glLineWidth(1.0f);
+    glBegin(GL_LINE_LOOP);
+        glVertex2f(0.60f,0.83f); glVertex2f(0.99f,0.83f);
+        glVertex2f(0.99f,0.97f); glVertex2f(0.60f,0.97f);
+    glEnd();
+    glColor3f(0.7f,0.9f,0.5f);
+    drawText(0.63f, 0.88f, bufTimer, GLUT_BITMAP_HELVETICA_18);
+
+    /* moedas HUD */
+    {
+        char bufMoeda[32];
+        sprintf(bufMoeda, "Moedas: %d/%d", getMoedasPegas(), getMoedasTotal());
+        glColor3f(1.0f, 0.82f, 0.0f);
+        drawText(-0.98f, 0.75f, bufMoeda, GLUT_BITMAP_HELVETICA_12);
+    }
+
+    /* dica */
+    glColor3f(0.20f,0.22f,0.35f);
+    drawText(-0.98f,-0.96f,"WASD/SPACE=pular  Q=dash(3s)  P=pause  M=mudo  ESC=menu",
+             GLUT_BITMAP_HELVETICA_12);
+
+    glutSwapBuffers();
+}
+
+// ============================================================
+// UPDATE GAME
+// ============================================================
+void updateGame(){
+    if(pausado) return;
+
+    timerFase  += 0.016f;
+    timerTotal += 0.016f;
+
+    float lerp=(faseAtual==2)?0.10f:0.30f;
+    float velAlvo=0;
+    if(kA){velAlvo=-0.025f;direcao=-1;}
+    if(kD){velAlvo= 0.025f;direcao= 1;}
+    velX+=(velAlvo-velX)*lerp;
+
+    if((kW||kSpace)&&noChao){
+        velY=0.048f; noChao=false; kW=false; kSpace=false;
+    }
+
+    velY+=gravidade;
+    if(velY<-0.06f) velY=-0.06f;
+
+    posX+=velX; posY+=velY;
+    resolveColisoes();
+    checaSaida();
+    checaMoedas(posX, posY, PW, PH);
+    updateMapa();
+
+    if(checaEspinhoColisao(posX, posY, PW, PH, faseAtual)){
+        morrer(); return;
+    }
+    if(posY < -1.2f){
+        morrer(); return;
+    }
+
+    if(!podeDash){
+        tempoDash+=0.016f;
+        if(tempoDash>=cooldownDash){ podeDash=true; tempoDash=0.0f; }
+    }
+
+    /* atualiza animacao do personagem (branch Diogo) */
+    animUpdate(0.016f, velX, velY, (int)noChao,
+               (int)podeDash, tempoDash, direcao);
+}
+
+// ============================================================
+// INPUT GAME
+// ============================================================
+void handleGameInput(unsigned char tecla){
+    switch(tecla){
+        case 'a':case 'A': kA=true;    break;
+        case 'd':case 'D': kD=true;    break;
+        case 'w':case 'W': kW=true;    break;
+        case ' ':          kSpace=true; break;
+        case 'q':case 'Q':
+            if(podeDash){ velX=0.13f*direcao; velY=0.01f; podeDash=false; tempoDash=0.0f; }
+            break;
+        case 'p':case 'P':
+            pausado=!pausado; opcaoPause=0;
+            break;
+        case 'm':case 'M':
+            { extern void audioMutar(); audioMutar(); }
+            break;
+        case 27:
+            kA=false; kD=false; kW=false; kSpace=false;
+            gameState=0; initGame();
+            break;
+    }
+}
+
+void handleGameInputUp(unsigned char tecla){
+    switch(tecla){
+        case 'a':case 'A': kA=false;    break;
+        case 'd':case 'D': kD=false;    break;
+        case 'w':case 'W': kW=false;    break;
+        case ' ':          kSpace=false; break;
+    }
+}
+
+// ============================================================
+// PAUSE
+// ============================================================
+void renderPause(){
+    renderMapa();
+    renderEspinhos(faseAtual);
+
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    glColor4f(0.0f,0.0f,0.0f,0.5f);
+    glBegin(GL_QUADS);
+        glVertex2f(-1,-1); glVertex2f(1,-1);
+        glVertex2f(1,1);   glVertex2f(-1,1);
+    glEnd();
+    glDisable(GL_BLEND);
+
+    glColor3f(1.0f,0.85f,0.0f);
+    drawText(-0.12f, 0.40f, "PAUSE", GLUT_BITMAP_TIMES_ROMAN_24);
+
+    if(opcaoPause==0) glColor3f(1.0f,0.85f,0.0f); else glColor3f(0.6f,0.6f,0.6f);
+    drawText(-0.20f, 0.10f, "> CONTINUAR", GLUT_BITMAP_HELVETICA_18);
+
+    if(opcaoPause==1) glColor3f(1.0f,0.85f,0.0f); else glColor3f(0.6f,0.6f,0.6f);
+    drawText(-0.20f,-0.10f, "  MENU PRINCIPAL", GLUT_BITMAP_HELVETICA_18);
+
+    glColor3f(0.4f,0.4f,0.4f);
+    drawText(-0.40f,-0.80f,"W/S = navegar   ENTER = confirmar   ESC = continuar",
+             GLUT_BITMAP_HELVETICA_12);
+
+    glutSwapBuffers();
+}
+
+void handlePauseInput(unsigned char tecla){
+    switch(tecla){
+        case 'w':case 'W': opcaoPause=(opcaoPause-1+2)%2; break;
+        case 's':case 'S': opcaoPause=(opcaoPause+1)%2;   break;
+        case '\r':case '\n':
+            if(opcaoPause==0){ pausado=false; }
+            else { pausado=false; gameState=0; initGame(); }
+            opcaoPause=0;
+            break;
+        case 27: pausado=false; opcaoPause=0; break;
+    }
+}
+
+// ============================================================
+// VITORIA
+// ============================================================
+static int opcaoVitoria = 0;
+
+void renderVitoria(){
+    glClearColor(0.02f,0.12f,0.02f,1.0f);
+    glClear(GL_COLOR_BUFFER_BIT);
+
+    if(vitoriaFinal){
+        glColor3f(1.0f,0.85f,0.0f);
+        drawText(-0.30f, 0.60f, "VOCE VENCEU!", GLUT_BITMAP_TIMES_ROMAN_24);
+        glColor3f(0.7f,1.0f,0.7f);
+        drawText(-0.40f, 0.40f, "Parabens! Voce completou o jogo!", GLUT_BITMAP_HELVETICA_18);
+    } else {
+        glColor3f(1.0f,0.85f,0.0f);
+        drawText(-0.28f, 0.60f, "FASE CONCLUIDA!", GLUT_BITMAP_TIMES_ROMAN_24);
+    }
+
+    char bufTimer[64];
+    if(vitoriaFinal){
+        int min=(int)(timerTotal/60.0f);
+        int seg=(int)(timerTotal)%60;
+        int cent=(int)((timerTotal-(int)timerTotal)*100);
+        sprintf(bufTimer,"Tempo total: %02d:%02d.%02d",min,seg,cent);
+    } else {
+        int min=(int)(timerFase/60.0f);
+        int seg=(int)(timerFase)%60;
+        int cent=(int)((timerFase-(int)timerFase)*100);
+        sprintf(bufTimer,"Tempo da fase: %02d:%02d.%02d",min,seg,cent);
+    }
+    glColor3f(0.6f,0.9f,0.6f);
+    drawText(-0.35f, 0.28f, bufTimer, GLUT_BITMAP_HELVETICA_18);
+
+    {
+        char bufM[48];
+        sprintf(bufM,"Moedas coletadas: %d / %d", getMoedasPegas(), getMoedasTotal());
+        glColor3f(1.0f,0.82f,0.0f);
+        drawText(-0.30f, 0.08f, bufM, GLUT_BITMAP_HELVETICA_18);
+    }
+
+    if(opcaoVitoria==0) glColor3f(1.0f,0.85f,0.0f); else glColor3f(0.6f,0.6f,0.6f);
+    const char *op0 = vitoriaFinal ? "> MENU PRINCIPAL" : "> PROXIMA FASE";
+    drawText(-0.25f,-0.15f, op0, GLUT_BITMAP_HELVETICA_18);
+
+    if(!vitoriaFinal){
+        if(opcaoVitoria==1) glColor3f(1.0f,0.85f,0.0f); else glColor3f(0.6f,0.6f,0.6f);
+        drawText(-0.25f,-0.35f, "  MENU PRINCIPAL", GLUT_BITMAP_HELVETICA_18);
+    }
+
+    glColor3f(0.3f,0.5f,0.3f);
+    drawText(-0.40f,-0.80f,"W/S = navegar   ENTER = confirmar",
+             GLUT_BITMAP_HELVETICA_12);
+
+    glutSwapBuffers();
+}
+
+void handleVitoriaInput(unsigned char tecla){
+    int totalOpcoes = vitoriaFinal ? 1 : 2;
+    switch(tecla){
+        case 'w':case 'W':
+            opcaoVitoria=(opcaoVitoria-1+totalOpcoes)%totalOpcoes; break;
+        case 's':case 'S':
+            opcaoVitoria=(opcaoVitoria+1)%totalOpcoes; break;
+        case '\r':case '\n':
+            if(vitoriaFinal || opcaoVitoria==1){
+                gameState=0; initGame();
+            } else {
+                avancarFase();
+                posX=-0.75f; posY=-0.70f; velX=0; velY=0; noChao=true;
+                respawnX=-0.75f; respawnY=-0.70f;
+                Health=3;
+                kA=false; kD=false; kW=false; kSpace=false;
+                timerFase=0.0f;
+                gameState=1;
+            }
+            opcaoVitoria=0;
+            break;
+        case 27:
+            gameState=0; initGame(); opcaoVitoria=0; break;
+    }
+}
+
+// ============================================================
+// DERROTA
+// ============================================================
+static int opcaoDerrota = 0;
+
+void renderDerrota(){
+    glClearColor(0.12f,0.02f,0.02f,1.0f);
+    glClear(GL_COLOR_BUFFER_BIT);
+
+    glColor3f(1.0f,0.2f,0.2f);
+    drawText(-0.22f, 0.55f, "GAME OVER", GLUT_BITMAP_TIMES_ROMAN_24);
+
+    glColor3f(0.8f,0.5f,0.5f);
+    drawText(-0.30f, 0.28f, "Suas vidas acabaram...", GLUT_BITMAP_HELVETICA_18);
+
+    if(opcaoDerrota==0) glColor3f(1.0f,0.3f,0.3f); else glColor3f(0.6f,0.6f,0.6f);
+    drawText(-0.25f, 0.0f, "> TENTAR DE NOVO", GLUT_BITMAP_HELVETICA_18);
+
+    if(opcaoDerrota==1) glColor3f(1.0f,0.3f,0.3f); else glColor3f(0.6f,0.6f,0.6f);
+    drawText(-0.25f,-0.20f, "  MENU PRINCIPAL", GLUT_BITMAP_HELVETICA_18);
+
+    glColor3f(0.4f,0.2f,0.2f);
+    drawText(-0.40f,-0.80f,"W/S = navegar   ENTER = confirmar",
+             GLUT_BITMAP_HELVETICA_12);
+
+    glutSwapBuffers();
+}
+
+void handleDerrotaInput(unsigned char tecla){
+    switch(tecla){
+        case 'w':case 'W': opcaoDerrota=(opcaoDerrota-1+2)%2; break;
+        case 's':case 'S': opcaoDerrota=(opcaoDerrota+1)%2;   break;
+        case '\r':case '\n':
+            if(opcaoDerrota==0){ initGame(); gameState=1; }
+            else               { gameState=0; initGame(); }
+            opcaoDerrota=0;
+            break;
+        case 27:
+            gameState=0; initGame(); opcaoDerrota=0; break;
+    }
+}
