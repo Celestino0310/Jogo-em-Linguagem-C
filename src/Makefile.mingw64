@@ -1,0 +1,42 @@
+# Project: Althea (Merged Branch)
+# Makefile para MSYS2 MinGW64 terminal usando gcc 32-bit
+# Use: make -f Makefile.mingw64
+
+CC       = /c/msys64/mingw32/bin/gcc.exe
+OBJ      = menu.o main.o game.o mapa.o audio.o espinho.o anim.o
+LINKOBJ  = menu.o main.o game.o mapa.o audio.o espinho.o anim.o
+LIBS     = -L../lib -lbass -lglut32 -lglu32 -lopengl32 -lwinmm
+INCS     = -I../include -I/c/msys64/mingw32/include
+BIN      = Althea.exe
+CFLAGS   = $(INCS) -Wall -O2
+
+.PHONY: all clean
+
+all: $(BIN)
+
+clean:
+	rm -f $(OBJ) $(BIN)
+
+$(BIN): $(OBJ)
+	$(CC) $(LINKOBJ) -o $(BIN) $(LIBS)
+
+menu.o: menu.c
+	$(CC) -c menu.c -o menu.o $(CFLAGS)
+
+main.o: main.c
+	$(CC) -c main.c -o main.o $(CFLAGS)
+
+game.o: game.c
+	$(CC) -c game.c -o game.o $(CFLAGS)
+
+mapa.o: mapa.c
+	$(CC) -c mapa.c -o mapa.o $(CFLAGS)
+
+audio.o: audio.c
+	$(CC) -c audio.c -o audio.o $(CFLAGS)
+
+espinho.o: espinho.c
+	$(CC) -c espinho.c -o espinho.o $(CFLAGS)
+
+anim.o: anim.c
+	$(CC) -c anim.c -o anim.o $(CFLAGS)
