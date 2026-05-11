@@ -193,7 +193,7 @@ bool checaEspinhoColisao(float px, float py,
     int n = 0;
     switch(fase) {
         case 0: zonas=espFase0; n=nEspFase0; break;
-       // case 1: zonas=espFase1; n=nEspFase1; break;
+        case 1: zonas=espFase1; n=nEspFase1; break;
         case 2: zonas=espFase2; n=nEspFase2; break;
         case 3: zonas=espFase3; n=nEspFase3; break;
     }

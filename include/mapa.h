@@ -17,4 +17,10 @@ void avancarFase();
 int  indiceSaida();
 bool ehEstrutura(int i);
 
+void resetMoedas();
+int  getMoedasPegas();
+int  getMoedasTotal();
+int  checaMoedas(float px, float py, float pw, float ph);
+void renderMoedas();
+
 #endif

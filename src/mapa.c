@@ -1,6 +1,7 @@
 #define GLUT_DISABLE_ATEXIT_HACK
 #define STB_IMAGE_IMPLEMENTATION
 #include "../include/audio.h"
+#include "../include/espinho.h"
 #include "../include/stb_image.h"
 #include "../include/GL/glut.h"
 #include "../include/mapa.h"
@@ -14,7 +15,7 @@
 // ============================================================
 Bloco *blocos    = NULL;
 int    numBlocos = 0;
-int    faseAtual = 0;//aqui fica  0  normalmente mas to testando começar na 2
+int    faseAtual = 0;//aqui fica  0  normalmente mas to testando come?ar na 2
 
 // ============================================================
 // TEXTURAS
@@ -627,6 +628,7 @@ void initMapa(){
     neveIniciada = false;
     initEstrelas();
     initTexturas();
+    resetMoedas();
 }
 
 // Gradiente de fundo estilo celeste
@@ -678,6 +680,12 @@ void renderMapa(){
         TipoBloco tipo = tipoAtual[i];
         renderBloco(b.x1,b.y1,b.x2,b.y2, tipo);
     }
+
+    // ESPINHOS
+    renderEspinhos(faseAtual);
+
+    // MOEDAS
+    renderMoedas();
 }
 
 void updateMapa(){
@@ -709,5 +717,91 @@ void avancarFase(){
             initNeve();
             break;
 		
+    }
+}
+
+// ============================================================
+// MOEDAS - 2 por fase, 8 no total
+// ============================================================
+#define MAX_MOEDAS 2
+
+typedef struct { float x, y; bool ativa; } Moeda;
+
+static Moeda moedasFase[4][MAX_MOEDAS] = {
+    { {-0.20f, -0.50f, true}, { 0.40f, -0.05f, true} }, // fase 0
+    { {-0.75f, -0.72f, true}, {-0.35f,  0.08f, true} }, // fase 1
+    { {-0.70f, -0.78f, true}, { 0.65f, -0.65f, true} }, // fase 2
+    { {-0.75f,  0.25f, true}, { 0.75f,  0.25f, true} }, // fase 3
+};
+
+static int moedasPegas = 0;
+
+void resetMoedas() {
+    int f, m;
+    for(f=0;f<4;f++)
+        for(m=0;m<MAX_MOEDAS;m++)
+            moedasFase[f][m].ativa = true;
+    moedasPegas = 0;
+}
+
+int getMoedasPegas() { return moedasPegas; }
+int getMoedasTotal() { return 4 * MAX_MOEDAS; }
+
+int checaMoedas(float px, float py, float pw, float ph) {
+    int m, pegou = 0;
+    float raio = 0.06f;
+    for(m = 0; m < MAX_MOEDAS; m++) {
+        Moeda *mo = &moedasFase[faseAtual][m];
+        if(!mo->ativa) continue;
+        if(px+pw > mo->x-raio && px-pw < mo->x+raio &&
+           py+ph > mo->y-raio && py    < mo->y+raio) {
+            mo->ativa = false;
+            moedasPegas++;
+            pegou = 1;
+        }
+    }
+    return pegou;
+}
+
+void renderMoedas() {
+    int m;
+    float raio = 0.04f;
+    float t = tempoEstrela;
+    for(m = 0; m < MAX_MOEDAS; m++) {
+        Moeda mo = moedasFase[faseAtual][m];
+        if(!mo.ativa) continue;
+        float bob = 0.012f * (float)sin(t * 3.0f + m * 1.5f);
+        float cx = mo.x;
+        float cy = mo.y + bob;
+        // sombra
+        glColor3f(0.4f, 0.3f, 0.0f);
+        glBegin(GL_TRIANGLE_FAN);
+        int k;
+        for(k=0;k<16;k++){
+            float a = k * 3.14159f * 2.0f / 16.0f;
+            glVertex2f(cx + (raio+0.004f)*(float)cos(a),
+                       cy + (raio+0.004f)*(float)sin(a));
+        }
+        glEnd();
+        // circulo dourado
+        glColor3f(1.0f, 0.82f, 0.0f);
+        glBegin(GL_TRIANGLE_FAN);
+        glVertex2f(cx, cy);
+        for(k=0;k<=16;k++){
+            float a = k * 3.14159f * 2.0f / 16.0f;
+            glVertex2f(cx + raio*(float)cos(a),
+                       cy + raio*(float)sin(a));
+        }
+        glEnd();
+        // brilho
+        glColor3f(1.0f, 1.0f, 0.6f);
+        glBegin(GL_TRIANGLE_FAN);
+        glVertex2f(cx - raio*0.2f, cy + raio*0.2f);
+        for(k=0;k<=10;k++){
+            float a = k * 3.14159f * 2.0f / 10.0f;
+            glVertex2f(cx - raio*0.2f + raio*0.45f*(float)cos(a),
+                       cy + raio*0.2f + raio*0.45f*(float)sin(a));
+        }
+        glEnd();
     }
 }
