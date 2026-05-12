@@ -1,0 +1,36 @@
+# Objetos compilados
+*.o
+
+# Dependencias geradas pelo compilador
+*.d
+
+# Arquivos temporarios
+*.tmp
+*.temp
+
+# Executaveis Linux
+*.out
+*.exe
+
+# Build folders
+
+bin/
+
+# Cache
+.cache/
+
+# Arquivos do VSCode
+.vscode/
+
+# Arquivos do CodeBlocks
+*.layout
+*.depend
+*.cbp
+
+# Arquivos do Visual Studio
+*.suo
+*.vcxproj*
+*.pdb
+
+# MacOS
+.DS_Store

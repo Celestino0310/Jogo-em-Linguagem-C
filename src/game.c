@@ -18,6 +18,12 @@ static int  opcaoPause   = 0;
 static bool vitoriaFinal = false;
 static float timerFase   = 0.0f;
 static float timerTotal  = 0.0f;
+//screenshot 
+// AVISO VISUAL DE SCREENSHOT
+// ============================================================
+static bool  screenshotMessageVisible = false;
+static float screenshotMessageTimer   = 0.0f;
+static const float SCREENSHOT_MESSAGE_DURATION = 2.5f;
 
 // ============================================================
 // JOGADOR
@@ -423,7 +429,19 @@ void handleGameInput(unsigned char tecla){
             break;
         case 'm':case 'M':
             { extern void audioMutar(); audioMutar(); }
+            break; 
+		case 'o':case 'O':
+            // Detecta a tecla P durante o jogo e salva a tela atual.
+            if(salvarScreenshot()){
+                /*
+                   Quando a screenshot e salva com sucesso, ativamos a mensagem
+                   e reiniciamos o timer para ela ficar alguns segundos na tela.
+                */
+                screenshotMessageVisible=true;
+                screenshotMessageTimer=SCREENSHOT_MESSAGE_DURATION;
+            }
             break;
+            
         case 27:
             kA=false; kD=false; kW=false; kSpace=false;
             gameState=0; initGame();

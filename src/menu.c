@@ -10,8 +10,8 @@ extern int gameState;
 // === ESTADO DO MENU ===
 static int opcaoSelecionada = 0;
 static int subTela = 0; // 0=principal, 1=options, 2=credits
-static const int TOTAL_OPCOES = 4;
-static const char *opcoes[] = { "START", "OPTIONS", "CREDITS", "EXIT" };
+static const int TOTAL_OPCOES = 5;
+static const char *opcoes[] = { "START", "OPTIONS", "SCREENSHOTS","CREDITS", "EXIT" };
 
 // === HELPER TEXTO ===
 static void desenhaTexto(float x, float y, const char *txt, void *fonte) {
@@ -20,8 +20,7 @@ static void desenhaTexto(float x, float y, const char *txt, void *fonte) {
 }
 
 // Desenha barra de volume estilizada
-static void desenhaBarra(float x, float y, float largura, float valor,
-                          float r, float g, float b) {
+static void desenhaBarra(float x, float y, float largura, float valor,float r, float g, float b) {
     // fundo da barra
     glColor3f(0.15f, 0.15f, 0.25f);
     glBegin(GL_QUADS);
@@ -57,27 +56,211 @@ static void desenhaBarra(float x, float y, float largura, float valor,
         glVertex2f(cx-0.008f, y+0.058f);
     glEnd();
 }
-
-// === TELA CREDITS ===
 static void renderCredits() {
+
     glClearColor(0.05f, 0.05f, 0.15f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT);
 
     glColor3f(1.0f, 0.85f, 0.0f);
-    desenhaTexto(-0.15f, 0.65f, "CREDITS", GLUT_BITMAP_TIMES_ROMAN_24);
 
-    glColor3f(0.9f, 0.9f, 0.9f);
-    desenhaTexto(-0.35f,  0.30f, "Desenvolvido por: Seu Nome",  GLUT_BITMAP_HELVETICA_18);
-    desenhaTexto(-0.35f,  0.05f, "Engine: OpenGL / GLUT",       GLUT_BITMAP_HELVETICA_18);
-    desenhaTexto(-0.35f, -0.20f, "Audio:  BASS Library",        GLUT_BITMAP_HELVETICA_18);
-    desenhaTexto(-0.35f, -0.45f, "Inspirado em: Celeste",       GLUT_BITMAP_HELVETICA_18);
+    desenhaTexto(
+        -0.12f,
+         0.88f,
+        "CREDITS",
+        GLUT_BITMAP_TIMES_ROMAN_24
+    );
 
-    glColor3f(0.4f, 0.6f, 1.0f);
-    desenhaTexto(-0.28f, -0.80f, "ESC = voltar", GLUT_BITMAP_HELVETICA_18);
+    // Decorative line
+    glColor3f(0.25f, 0.25f, 0.55f);
+
+    glLineWidth(2.0f);
+
+    glBegin(GL_LINES);
+        glVertex2f(-0.60f, 0.78f);
+        glVertex2f( 0.60f, 0.78f);
+    glEnd();
+
+
+
+    float y = 0.58f;
+
+    
+    glColor3f(0.90f, 0.90f, 0.90f);
+
+    desenhaTexto(
+        -0.48f,
+         y,
+        "Creative Director & Lead Map Designer",
+        GLUT_BITMAP_HELVETICA_18
+    );
+
+    // Name
+    glColor3f(0.65f, 0.75f, 1.0f);
+
+    desenhaTexto(
+         0.12f,
+         y,
+        "Gabriel Celestino",
+        GLUT_BITMAP_HELVETICA_18
+    );
+
+    y -= 0.14f;
+
+    glColor3f(0.90f, 0.90f, 0.90f);
+
+    desenhaTexto(
+        -0.48f,
+         y,
+        "Gameplay & Movement Programmer",
+        GLUT_BITMAP_HELVETICA_18
+    );
+
+    glColor3f(0.65f, 0.75f, 1.0f);
+
+    desenhaTexto(
+         0.12f,
+         y,
+        "Gabriel Neves",
+        GLUT_BITMAP_HELVETICA_18
+    );
+
+    y -= 0.14f;
+
+    glColor3f(0.90f, 0.90f, 0.90f);
+
+    desenhaTexto(
+        -0.48f,
+         y,
+        "Animation Designer & Visual Effects",
+        GLUT_BITMAP_HELVETICA_18
+    );
+
+    glColor3f(0.65f, 0.75f, 1.0f);
+
+    desenhaTexto(
+         0.12f,
+         y,
+        "Diogo Bassalobre",
+        GLUT_BITMAP_HELVETICA_18
+    );
+
+    y -= 0.14f;
+
+    glColor3f(0.90f, 0.90f, 0.90f);
+
+    desenhaTexto(
+        -0.48f,
+         y,
+        "Lead Gameplay Developer",
+        GLUT_BITMAP_HELVETICA_18
+    );
+
+    glColor3f(0.65f, 0.75f, 1.0f);
+
+    desenhaTexto(
+         0.12f,
+         y,
+        "Igor de Abreu",
+        GLUT_BITMAP_HELVETICA_18
+    );
+
+    y -= 0.14f;
+
+    glColor3f(0.90f, 0.90f, 0.90f);
+
+    desenhaTexto(
+        -0.48f,
+         y,
+        "Save System & Technical Support",
+        GLUT_BITMAP_HELVETICA_18
+    );
+
+    glColor3f(0.65f, 0.75f, 1.0f);
+
+    desenhaTexto(
+         0.12f,
+         y,
+        "Tiago Coquinho",
+        GLUT_BITMAP_HELVETICA_18
+    );
+
+    // =========================================
+    // DIVIDER
+    // =========================================
+
+    glColor3f(0.20f, 0.20f, 0.45f);
+
+    glBegin(GL_LINES);
+        glVertex2f(-0.55f, -0.20f);
+        glVertex2f( 0.55f, -0.20f);
+    glEnd();
+
+
+    glColor3f(0.55f, 0.65f, 0.95f);
+
+    desenhaTexto(
+        -0.45f,
+        -0.38f,
+        "Graphics Engine:",
+        GLUT_BITMAP_HELVETICA_18
+    );
+
+    glColor3f(0.80f, 0.80f, 0.80f);
+
+    desenhaTexto(
+        -0.02f,
+        -0.38f,
+        "OpenGL / GLUT",
+        GLUT_BITMAP_HELVETICA_18
+    );
+
+    glColor3f(0.55f, 0.65f, 0.95f);
+
+    desenhaTexto(
+        -0.45f,
+        -0.52f,
+        "Audio System:",
+        GLUT_BITMAP_HELVETICA_18
+    );
+
+    glColor3f(0.80f, 0.80f, 0.80f);
+
+    desenhaTexto(
+        -0.02f,
+        -0.52f,
+        "BASS Audio Library",
+        GLUT_BITMAP_HELVETICA_18
+    );
+
+    glColor3f(0.55f, 0.65f, 0.95f);
+
+    desenhaTexto(
+        -0.45f,
+        -0.66f,
+        "Inspired By:",
+        GLUT_BITMAP_HELVETICA_18
+    );
+
+    glColor3f(0.80f, 0.80f, 0.80f);
+
+    desenhaTexto(
+        -0.02f,
+        -0.66f,
+        "Celeste",
+        GLUT_BITMAP_HELVETICA_18
+    );
+
+ 
+    glColor3f(0.40f, 0.60f, 1.0f);
+    desenhaTexto(
+        -0.16f,
+        -0.88f,
+        "ESC = Return",
+        GLUT_BITMAP_HELVETICA_18
+    );
 
     glutSwapBuffers();
 }
-
 // === TELA OPTIONS (com controle de audio) ===
 static void renderOptions() {
     glClearColor(0.05f, 0.05f, 0.15f, 1.0f);
@@ -198,14 +381,17 @@ void initMenu() {
     subTela = 0;
 }
 
+
 void renderMenu() {
     if      (subTela == 1) renderOptions();
-    else if (subTela == 2) renderCredits();
+    else if (subTela == 2) desenharGaleriaScreenshots();
+    else if (subTela == 3) renderCredits();
     else                   renderMenuPrincipal();
 }
 
-void updateMenu() {}
-
+void updateMenu() {
+    if (subTela == 3) atualizarMenuScreenshots();
+}
 void handleMenuInput(unsigned char tecla) {
     // M = mudo em qualquer sub-tela
     if (tecla == 'm' || tecla == 'M') {
@@ -238,7 +424,17 @@ void handleMenuInput(unsigned char tecla) {
                     break;
             }
         }
-        if (tecla == 27) { subTela = 0; }
+        if (subTela == 2) {
+            /*
+               Dentro da galeria, A/D navegam entre screenshots
+               e ESC volta para o menu principal.
+            */
+            if (tecla == 'a' || tecla == 'A') galeriaScreenshotAnterior();
+            if (tecla == 'd' || tecla == 'D') galeriaScreenshotProxima();
+            if (tecla == 27) { liberarTexturasScreenshots(); subTela = 0; }
+        } else if (tecla == 27) {
+            subTela = 0; // ESC volta das subtelas para o menu principal
+    	}
         glutPostRedisplay();
         return;
     }
@@ -253,8 +449,9 @@ void handleMenuInput(unsigned char tecla) {
         case '\r': case '\n':
             if (opcaoSelecionada == 0) gameState = 1;
             if (opcaoSelecionada == 1) subTela   = 1;
-            if (opcaoSelecionada == 2) subTela   = 2;
-            if (opcaoSelecionada == 3) { audioFechar(); exit(0); }
+            if (opcaoSelecionada == 2) { carregarScreenshots();subTela   = 2;}
+            if (opcaoSelecionada == 3) subTela   = 3;
+            if (opcaoSelecionada == 4) { audioFechar(); exit(0); }
             break;
         case 27:
             audioFechar(); exit(0);
@@ -309,7 +506,8 @@ void handleMenuMouse(int button, int state, int x, int y) {
             if (i==0) gameState=1;
             if (i==1) subTela=1;
             if (i==2) subTela=2;
-            if (i==3) { audioFechar(); exit(0); }
+            if (i==3) subTela=3;
+            if (i==4) { audioFechar(); exit(0); }
             glutPostRedisplay();
             return;
         }

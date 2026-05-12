@@ -9,7 +9,7 @@
 // ============================================================
 static HSTREAM  musicaAtual   = 0;
 static MusicaID musicaAtualID = -1;
-static float    volumeGeral   = 0.8f;  // 0.0 a 1.0
+static float    volumeGeral   = 0.10f;  // 0.0 a 1.0
 static float    volumeMusica  = 0.9f;  // 0.0 a 1.0
 static bool     mutado        = false;
 static float    volumeAnteMute = 0.8f; // guarda volume antes de mutar
