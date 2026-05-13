@@ -3,6 +3,8 @@
 #include "../include/mapa.h"
 #include "../include/espinho.h"
 #include "../include/anim.h"
+#include "../include/screenshot.h"
+#include "../include/ranking_score.h"
 #include "../include/GL/glut.h"
 #include <stdbool.h>
 #include <stdlib.h>
@@ -30,22 +32,24 @@ static const float SCREENSHOT_MESSAGE_DURATION = 2.5f;
 // Arquivo: assets/ranking.txt
 //
 // Formato de cada linha:
-//   MM:SS.CC,segundos_float,moedas_pegas,moedas_total
+//   MM:SS.CC,segundos_float,moedas_pegas,moedas_total,pontuacao
 // Exemplo:
-//   01:23.45,83.45,6,8
+//   01:23.45,83.45,6,8,812
 //
-// - tempoStr  : "MM:SS.CC"  ? exibido igual à tela de vitória
-// - tempo     : float       ? usado para ordenação crescente
+// - tempoStr  : "MM:SS.CC"  ? exibido igual ï¿½ tela de vitï¿½ria
+// - tempo     : float       ? usado para calcular pontuacao
 // - moedasPegas / moedasTotal ? exibidos como "X/8 moedas"
+// - pontuacao : int         ? usado para ordenacao decrescente
 // ============================================================
 #define RANKING_PATH  "../assets/ranking.txt"
-#define RANKING_MAX   20   /* máximo de entradas armazenadas */
+#define RANKING_MAX   20   /* mï¿½ximo de entradas armazenadas */
 
 typedef struct {
-    float tempo;            /* segundos totais — chave de ordenação */
+    float tempo;            /* segundos totais                      */
     char  tempoStr[16];     /* "MM:SS.CC"                           */
     int   moedasPegas;      /* moedas coletadas nessa partida       */
     int   moedasTotal;      /* total de moedas do jogo (sempre 8)   */
+    int   pontuacao;        /* maior pontuacao = melhor ranking     */
 } EntradaRanking;
 
 static EntradaRanking ranking[RANKING_MAX];
@@ -54,46 +58,51 @@ static bool           rankingAberto = false;  /* sub-tela de ranking ativa */
 
 /* ---------- rankingSalvar ------------------------------------------
    Grava UMA linha no arquivo (append).
-   Campos: tempoStr , segundos_float , moedas_pegas , moedas_total
+   Campos: tempoStr , segundos_float , moedas_pegas , moedas_total , pontuacao
    ------------------------------------------------------------------ */
 static void rankingSalvar(float t, int mPegas, int mTotal) {
     FILE *f = fopen(RANKING_PATH, "a");
-    if (!f) return;                        /* sem permissão de escrita — ignora */
+    if (!f) return;                        /* sem permissï¿½o de escrita ï¿½ ignora */
 
     int min  = (int)(t / 60.0f);
     int seg  = (int)(t) % 60;
     int cent = (int)((t - (int)t) * 100);
+    int pontuacao = calcularPontuacaoRanking(t, mPegas);
 
-    /* linha: MM:SS.CC,segundos,moedasPegas,moedasTotal */
-    fprintf(f, "%02d:%02d.%02d,%.2f,%d,%d\n",
+    /* linha: MM:SS.CC,segundos,moedasPegas,moedasTotal,pontuacao */
+    fprintf(f, "%02d:%02d.%02d,%.2f,%d,%d,%d\n",
             min, seg, cent,
             t,
             mPegas,
-            mTotal);
+            mTotal,
+            pontuacao);
     fclose(f);
 }
 
 /* ---------- cmpRanking --------------------------------------------
-   Comparador para qsort — ordem crescente de tempo (melhor = menor).
+   Comparador para qsort ï¿½ ordem decrescente de pontuacao.
+   Em empate, menor tempo fica na frente.
    ------------------------------------------------------------------ */
 static int cmpRanking(const void *a, const void *b) {
     const EntradaRanking *ea = (const EntradaRanking *)a;
     const EntradaRanking *eb = (const EntradaRanking *)b;
+    if (ea->pontuacao > eb->pontuacao) return -1;
+    if (ea->pontuacao < eb->pontuacao) return  1;
     if (ea->tempo < eb->tempo) return -1;
     if (ea->tempo > eb->tempo) return  1;
     return 0;
 }
 
 /* ---------- rankingCarregar ----------------------------------------
-   Lê todas as linhas de ranking.txt, preenche o array e ordena.
-   Linhas malformadas são silenciosamente ignoradas.
+   Lï¿½ todas as linhas de ranking.txt, preenche o array e ordena.
+   Linhas malformadas sï¿½o silenciosamente ignoradas.
    ------------------------------------------------------------------ */
 static void rankingCarregar(void) {
     rankingCount = 0;
     FILE *f = fopen(RANKING_PATH, "r");
-    if (!f) return;                        /* arquivo ainda não existe — ok */
+    if (!f) return;                        /* arquivo ainda nï¿½o existe ï¿½ ok */
 
-    char linha[64];
+    char linha[96];
     while (fgets(linha, sizeof(linha), f) && rankingCount < RANKING_MAX) {
 
         /* remove \n e \r finais */
@@ -102,9 +111,9 @@ static void rankingCarregar(void) {
             linha[--len] = '\0';
         if (len == 0) continue;
 
-        /* --- parse manual: campo1,campo2,campo3,campo4 --- */
+        /* --- parse manual: campo1,campo2,campo3,campo4,campo5 opcional --- */
 
-        /* campo 1: tempoStr  (até a primeira vírgula) */
+        /* campo 1: tempoStr  (atï¿½ a primeira vï¿½rgula) */
         char *p1 = strchr(linha, ',');
         if (!p1) continue;
         *p1 = '\0';                        /* termina tempoStr */
@@ -119,8 +128,12 @@ static void rankingCarregar(void) {
         if (!p3) continue;
         *p3 = '\0';
 
-        /* campo 4: moedasTotal (restante da linha) */
+        /* campo 4: moedasTotal; campo 5 opcional: pontuacao */
         char *campoMoedasTotal = p3 + 1;
+        char *p4 = strchr(p3 + 1, ',');
+        if (p4) {
+            *p4 = '\0';
+        }
 
         /* preenche a entrada */
         strncpy(ranking[rankingCount].tempoStr, linha, 15);
@@ -128,12 +141,14 @@ static void rankingCarregar(void) {
         ranking[rankingCount].tempo          = (float)atof(p1  + 1);
         ranking[rankingCount].moedasPegas    = atoi(p2  + 1);
         ranking[rankingCount].moedasTotal    = atoi(campoMoedasTotal);
+        ranking[rankingCount].pontuacao       = calcularPontuacaoRanking(ranking[rankingCount].tempo,
+                                                                           ranking[rankingCount].moedasPegas);
 
         rankingCount++;
     }
     fclose(f);
 
-    /* ordena do menor para o maior tempo */
+    /* ordena da maior para a menor pontuacao */
     qsort(ranking, rankingCount, sizeof(EntradaRanking), cmpRanking);
 }
 
@@ -266,6 +281,27 @@ static void drawText(float x, float y, const char *txt, void *fonte){
     glRasterPos2f(x, y);
     while(*txt){ glutBitmapCharacter(fonte, *txt); txt++; }
 }
+static void renderScreenshotMessage() {
+    if (!screenshotMessageVisible) return;
+
+    /*
+       A caixa e desenhada perto do canto inferior esquerdo.
+       Ela fica um pouco acima da dica de controles para nao cobrir o texto do HUD.
+    */
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    glColor4f(0.02f, 0.02f, 0.06f, 0.78f);
+    glBegin(GL_QUADS);
+        glVertex2f(-0.98f, -0.82f);
+        glVertex2f(-0.50f, -0.82f);
+        glVertex2f(-0.50f, -0.70f);
+        glVertex2f(-0.98f, -0.70f);
+    glEnd();
+    glDisable(GL_BLEND);
+
+    glColor3f(0.92f, 0.95f, 1.0f);
+    drawText(-0.94f, -0.775f, "Screenshot salva!", GLUT_BITMAP_HELVETICA_12);
+}
 
 // ============================================================
 // PUBLICAS
@@ -287,6 +323,8 @@ void initGame(){
     vitoriaFinal=false;
     rankingAberto=false;
     timerFase=0.0f; timerTotal=0.0f;
+    screenshotMessageVisible=false;
+    screenshotMessageTimer=0.0f;
     initMapa();
     animInit();
 }
@@ -367,8 +405,10 @@ void renderGame(){
 
     glColor3f(0.20f,0.22f,0.35f);
     drawText(-0.98f,-0.96f,
-             "WASD/SPACE=pular  Q=dash  Q+D/A=horiz  Q+W+D/A=diag  P=pause  M=mudo  ESC=menu",
+             "WASD/SPACE=pular  Q=dash  Q+D/A=horiz  Q+W+D/A=diag  P=pause  O=screenshot  M=mudo  ESC=menu",
              GLUT_BITMAP_HELVETICA_12);
+
+    renderScreenshotMessage();
 
     glutSwapBuffers();
 }
@@ -468,7 +508,17 @@ void updateGame(){
     checaSaida();
     checaMoedas(posX, posY, PW, PH);
     updateMapa();
-
+    /*
+       Controla o tempo do aviso de screenshot.
+       A cada frame o timer diminui; quando chega em zero, a mensagem some sozinha.
+    */
+    if(screenshotMessageVisible){
+        screenshotMessageTimer-=0.016f;
+        if(screenshotMessageTimer<=0.0f){
+            screenshotMessageVisible=false;
+            screenshotMessageTimer=0.0f;
+        }
+    }
     if(checaEspinhoColisao(posX, posY, PW, PH, faseAtual)){
         morrer(); return;
     }
@@ -587,78 +637,87 @@ void handlePauseInput(unsigned char tecla){
 
 // ============================================================
 // SUB-TELA DE RANKING
-// Exibe os melhores tempos em ordem crescente (menor = melhor).
-// Cada linha mostra: posição, tempo (MM:SS.CC) e moedas (X/8).
+// Exibe as melhores pontuacoes em ordem decrescente (maior = melhor).
+// Cada linha mostra: posicao, tempo (MM:SS.CC), moedas e pontuacao.
 // ============================================================
 static void renderRanking(void) {
     glClearColor(0.02f, 0.05f, 0.15f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT);
 
-    /* título */
     glColor3f(1.0f, 0.85f, 0.0f);
-    drawText(-0.18f, 0.80f, "RANKING", GLUT_BITMAP_TIMES_ROMAN_24);
+    drawText(-0.10f, 0.84f, "RANKING", GLUT_BITMAP_TIMES_ROMAN_24);
 
-    /* linha decorativa */
     glColor3f(0.25f, 0.25f, 0.55f);
     glLineWidth(2.0f);
     glBegin(GL_LINES);
-        glVertex2f(-0.70f, 0.70f);
-        glVertex2f( 0.70f, 0.70f);
+        glVertex2f(-0.55f, 0.73f);
+        glVertex2f( 0.55f, 0.73f);
     glEnd();
 
     if (rankingCount == 0) {
-        /* nenhuma entrada gravada ainda */
         glColor3f(0.6f, 0.6f, 0.6f);
-        drawText(-0.35f, 0.20f, "Nenhum tempo registrado ainda.",
+        drawText(-0.33f, 0.20f, "Nenhum tempo registrado ainda.",
                  GLUT_BITMAP_HELVETICA_18);
     } else {
-        /* cabeçalho das colunas:  #  |  Tempo  |  Moedas */
-        glColor3f(0.5f, 0.8f, 1.0f);
-        drawText(-0.65f, 0.58f, "#    Tempo         Moedas",
-                 GLUT_BITMAP_HELVETICA_18);
-
-        /* até 10 entradas visíveis */
+        const float xPosicao  = -0.50f;
+        const float xTempo    = -0.34f;
+        const float xMoedas   = -0.08f;
+        const float xPontos   =  0.20f;
+        float y = 0.59f;
         int exibir = (rankingCount < 10) ? rankingCount : 10;
-        float y = 0.44f;
         int i;
+
+        glColor3f(0.5f, 0.8f, 1.0f);
+        drawText(xPosicao, y, "#", GLUT_BITMAP_HELVETICA_18);
+        drawText(xTempo,   y, "Tempo", GLUT_BITMAP_HELVETICA_18);
+        drawText(xMoedas,  y, "Moedas", GLUT_BITMAP_HELVETICA_18);
+        drawText(xPontos,  y, "Pontuacao", GLUT_BITMAP_HELVETICA_18);
+
+        glColor3f(0.12f, 0.18f, 0.38f);
+        glBegin(GL_LINES);
+            glVertex2f(-0.55f, 0.53f);
+            glVertex2f( 0.55f, 0.53f);
+        glEnd();
+
+        y = 0.43f;
         for (i = 0; i < exibir; i++) {
-            /* cor por posição: ouro / prata / bronze / branco */
+            char bufPos[8];
+            char bufMoedas[16];
+            char bufPontos[16];
+
             if      (i == 0) glColor3f(1.00f, 0.85f, 0.00f);
             else if (i == 1) glColor3f(0.80f, 0.80f, 0.80f);
             else if (i == 2) glColor3f(0.80f, 0.50f, 0.20f);
             else             glColor3f(0.75f, 0.75f, 0.75f);
 
-            /* monta a string da linha:
-               " 1.  01:23.45     6/8 moedas"            */
-            char bufLinha[64];
-            sprintf(bufLinha, "%2d.  %s     %d/%d moedas",
-                    i + 1,
-                    ranking[i].tempoStr,
-                    ranking[i].moedasPegas,
-                    ranking[i].moedasTotal);
+            sprintf(bufPos, "%2d.", i + 1);
+            sprintf(bufMoedas, "%d/%d", ranking[i].moedasPegas, ranking[i].moedasTotal);
+            sprintf(bufPontos, "%d", ranking[i].pontuacao);
 
-            drawText(-0.65f, y, bufLinha, GLUT_BITMAP_HELVETICA_18);
-            y -= 0.10f;
+            drawText(xPosicao, y, bufPos, GLUT_BITMAP_HELVETICA_18);
+            drawText(xTempo,   y, ranking[i].tempoStr, GLUT_BITMAP_HELVETICA_18);
+            drawText(xMoedas,  y, bufMoedas, GLUT_BITMAP_HELVETICA_18);
+            drawText(xPontos,  y, bufPontos, GLUT_BITMAP_HELVETICA_18);
+
+            y -= 0.095f;
         }
     }
 
-    /* instrução de saída */
     glColor3f(0.4f, 0.6f, 1.0f);
-    drawText(-0.30f, -0.82f, "ESC / ENTER = voltar",
+    drawText(-0.18f, -0.84f, "ESC / ENTER = voltar",
              GLUT_BITMAP_HELVETICA_18);
 
     glutSwapBuffers();
 }
-
 // ============================================================
-// VITORIA — 3 opções quando vitoriaFinal == true:
+// VITORIA ï¿½ 3 opï¿½ï¿½es quando vitoriaFinal == true:
 //   0: MENU PRINCIPAL
 //   1: VER RANKING
 //   2: JOGAR NOVAMENTE
 // ============================================================
 static int opcaoVitoria = 0;
 
-/* Quantas opções existem dependendo do contexto */
+/* Quantas opï¿½ï¿½es existem dependendo do contexto */
 static int totalOpcoesVitoria(void) {
     if (vitoriaFinal) return 3;   /* Menu | Ranking | Jogar de novo */
     return 2;                     /* Proxima fase  | Menu           */
@@ -673,63 +732,89 @@ void renderVitoria(void) {
 
     if (vitoriaFinal) {
         glColor3f(1.0f, 0.85f, 0.0f);
-        drawText(-0.30f, 0.65f, "VOCE VENCEU!", GLUT_BITMAP_TIMES_ROMAN_24);
+        drawText(-0.18f, 0.78f, "VOCE VENCEU!", GLUT_BITMAP_TIMES_ROMAN_24);
         glColor3f(0.7f, 1.0f, 0.7f);
-        drawText(-0.40f, 0.48f, "Parabens! Voce completou o jogo!", GLUT_BITMAP_HELVETICA_18);
+        drawText(-0.33f, 0.61f, "Parabens! Voce completou o jogo!", GLUT_BITMAP_HELVETICA_18);
     } else {
         glColor3f(1.0f, 0.85f, 0.0f);
-        drawText(-0.28f, 0.65f, "FASE CONCLUIDA!", GLUT_BITMAP_TIMES_ROMAN_24);
+        drawText(-0.22f, 0.78f, "FASE CONCLUIDA!", GLUT_BITMAP_TIMES_ROMAN_24);
     }
 
-    /* --- tempo --- exibido idêntico ao HUD: MM:SS.CC --- */
+    /* Linha divisoria entre titulo e resultados. */
+    glColor3f(0.12f, 0.32f, 0.12f);
+    glLineWidth(2.0f);
+    glBegin(GL_LINES);
+        glVertex2f(-0.45f, 0.52f);
+        glVertex2f( 0.45f, 0.52f);
+    glEnd();
+
+    /* --- tempo --- exibido identico ao HUD: MM:SS.CC --- */
     {
         char bufTimer[64];
         float t = vitoriaFinal ? timerTotal : timerFase;
         int min  = (int)(t / 60.0f);
         int seg  = (int)(t) % 60;
         int cent = (int)((t - (int)t) * 100);
-        const char *label = vitoriaFinal ? "Tempo total: " : "Tempo da fase: ";
-        sprintf(bufTimer, "%s%02d:%02d.%02d", label, min, seg, cent);
+        const char *label = vitoriaFinal ? "Tempo total" : "Tempo da fase";
+        sprintf(bufTimer, "%s: %02d:%02d.%02d", label, min, seg, cent);
         glColor3f(0.6f, 0.9f, 0.6f);
-        drawText(-0.40f, 0.32f, bufTimer, GLUT_BITMAP_HELVETICA_18);
+        drawText(-0.28f, 0.35f, bufTimer, GLUT_BITMAP_HELVETICA_18);
     }
 
-    /* --- moedas: X/8 moedas --- */
+    /* --- moedas e pontuacao --- */
     {
         char bufM[48];
-        sprintf(bufM, "Moedas coletadas: %d/%d moedas",
-                getMoedasPegas(), getMoedasTotal());
+        sprintf(bufM, "Moedas: %d/%d", getMoedasPegas(), getMoedasTotal());
         glColor3f(1.0f, 0.82f, 0.0f);
-        drawText(-0.40f, 0.14f, bufM, GLUT_BITMAP_HELVETICA_18);
+        drawText(-0.28f, 0.21f, bufM, GLUT_BITMAP_HELVETICA_18);
     }
 
-    /* ---- OPÇÕES ---- */
-    /* Opção 0 */
+    if (vitoriaFinal) {
+        char bufP[48];
+        sprintf(bufP, "Pontuacao: %d",
+                calcularPontuacaoRanking(timerTotal, getMoedasPegas()));
+        glColor3f(0.7f, 0.9f, 1.0f);
+        drawText(-0.28f, 0.07f, bufP, GLUT_BITMAP_HELVETICA_18);
+    }
+
+    /* Linha divisoria entre resultados e menu. */
+    glColor3f(0.12f, 0.32f, 0.12f);
+    glBegin(GL_LINES);
+        glVertex2f(-0.35f, -0.06f);
+        glVertex2f( 0.35f, -0.06f);
+    glEnd();
+
+    /* ---- OPCOES ---- */
     if (opcaoVitoria == 0) glColor3f(1.0f, 0.85f, 0.0f); else glColor3f(0.6f, 0.6f, 0.6f);
-    const char *op0 = vitoriaFinal ? "> MENU PRINCIPAL" : "> PROXIMA FASE";
-    drawText(-0.30f, -0.05f, op0, GLUT_BITMAP_HELVETICA_18);
+    drawText(-0.23f, -0.20f,
+             vitoriaFinal
+                ? (opcaoVitoria == 0 ? "> MENU PRINCIPAL" : "  MENU PRINCIPAL")
+                : (opcaoVitoria == 0 ? "> PROXIMA FASE" : "  PROXIMA FASE"),
+             GLUT_BITMAP_HELVETICA_18);
 
     if (vitoriaFinal) {
-        /* Opção 1 — VER RANKING */
         if (opcaoVitoria == 1) glColor3f(1.0f, 0.85f, 0.0f); else glColor3f(0.6f, 0.6f, 0.6f);
-        drawText(-0.30f, -0.22f, "  VER RANKING", GLUT_BITMAP_HELVETICA_18);
+        drawText(-0.23f, -0.34f,
+                 opcaoVitoria == 1 ? "> VER RANKING" : "  VER RANKING",
+                 GLUT_BITMAP_HELVETICA_18);
 
-        /* Opção 2 — JOGAR NOVAMENTE */
         if (opcaoVitoria == 2) glColor3f(1.0f, 0.85f, 0.0f); else glColor3f(0.6f, 0.6f, 0.6f);
-        drawText(-0.30f, -0.39f, "  JOGAR NOVAMENTE", GLUT_BITMAP_HELVETICA_18);
+        drawText(-0.23f, -0.48f,
+                 opcaoVitoria == 2 ? "> JOGAR NOVAMENTE" : "  JOGAR NOVAMENTE",
+                 GLUT_BITMAP_HELVETICA_18);
     } else {
-        /* Opção 1 — MENU PRINCIPAL (fase não-final) */
         if (opcaoVitoria == 1) glColor3f(1.0f, 0.85f, 0.0f); else glColor3f(0.6f, 0.6f, 0.6f);
-        drawText(-0.30f, -0.22f, "  MENU PRINCIPAL", GLUT_BITMAP_HELVETICA_18);
+        drawText(-0.23f, -0.34f,
+                 opcaoVitoria == 1 ? "> MENU PRINCIPAL" : "  MENU PRINCIPAL",
+                 GLUT_BITMAP_HELVETICA_18);
     }
 
     glColor3f(0.3f, 0.5f, 0.3f);
-    drawText(-0.40f, -0.80f, "W/S = navegar   ENTER = confirmar",
+    drawText(-0.30f, -0.84f, "W/S = navegar   ENTER = confirmar",
              GLUT_BITMAP_HELVETICA_12);
 
     glutSwapBuffers();
 }
-
 void handleVitoriaInput(unsigned char tecla) {
     /* dentro do ranking: qualquer tecla confirmada volta */
     if (rankingAberto) {
@@ -754,17 +839,17 @@ void handleVitoriaInput(unsigned char tecla) {
                     /* menu principal */
                     gameState = 0; initGame(); opcaoVitoria = 0;
                 } else if (opcaoVitoria == 1) {
-                    /* abre sub-tela de ranking: lê e ordena o arquivo */
+                    /* abre sub-tela de ranking: lï¿½ e ordena o arquivo */
                     rankingCarregar();
                     rankingAberto = true;
                 } else {
-                    /* jogar novamente do início */
+                    /* jogar novamente do inï¿½cio */
                     initGame(); gameState = 1; opcaoVitoria = 0;
                 }
             } else {
-                /* não é vitória final */
+                /* nï¿½o ï¿½ vitï¿½ria final */
                 if (opcaoVitoria == 0) {
-                    /* próxima fase */
+                    /* prï¿½xima fase */
                     avancarFase();
                     posX = -0.75f; posY = -0.70f; velX = 0; velY = 0; noChao = true;
                     respawnX = -0.75f; respawnY = -0.70f;

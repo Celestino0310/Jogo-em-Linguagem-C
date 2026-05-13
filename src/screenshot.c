@@ -65,7 +65,7 @@ static void criaNomeUnico(char *destino, size_t tamanho) {
 
     /*
        O horario no nome ja evita quase todas as repeticoes.
-       O contador abaixo garante que apertar P duas vezes no mesmo segundo
+       O contador abaixo garante que apertar O duas vezes no mesmo segundo
        nao sobrescreva uma screenshot antiga.
     */
     snprintf(destino, tamanho, SCREENSHOT_DIR "\\%s.bmp", base);
@@ -184,3 +184,4 @@ int salvarScreenshot(void) {
     free(pixelsInvertidos);
     return 0;
 }
+

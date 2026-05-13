@@ -1,6 +1,7 @@
 #define GLUT_DISABLE_ATEXIT_HACK
 #include "../include/menu.h"
 #include "../include/audio.h"
+#include "../include/galeria_screenshot.h"
 #include "../include/GL/glut.h"
 #include <stdlib.h>
 #include <stdio.h>

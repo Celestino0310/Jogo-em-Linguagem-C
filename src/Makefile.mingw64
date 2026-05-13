@@ -1,14 +1,22 @@
-# Project: Althea (Merged Branch)
-# Makefile para MSYS2 MinGW64 terminal usando gcc 32-bit
-# Use: make -f Makefile.mingw64
+# Project: Althea
+# Makefile para MSYS2 MinGW64.
+# Use dentro da pasta src:
+#   make -f Makefile.mingw64
 
-CC       = /c/msys64/mingw32/bin/gcc.exe
-OBJ      = menu.o main.o game.o mapa.o audio.o espinho.o anim.o
-LINKOBJ  = menu.o main.o game.o mapa.o audio.o espinho.o anim.o
-LIBS     = -L../lib -lbass -lglut32 -lglu32 -lopengl32 -lwinmm
-INCS     = -I../include -I/c/msys64/mingw32/include
+CC       = gcc
+COMMON_OBJ = menu.o main.o game.o mapa.o espinho.o anim.o screenshot.o galeria_screenshot.o
+OBJ      = $(COMMON_OBJ) audio_stub.o
+LINKOBJ  = $(OBJ)
+LIBS     = -lfreeglut -lglu32 -lopengl32 -lwinmm
+INCS     = -I../include -I/mingw64/include
 BIN      = Althea.exe
 CFLAGS   = $(INCS) -Wall -O2
+
+ifeq ($(AUDIO),bass)
+OBJ      = $(COMMON_OBJ) audio.o
+LINKOBJ  = $(OBJ)
+LIBS     = -L../lib -lbass -lfreeglut -lglu32 -lopengl32 -lwinmm
+endif
 
 .PHONY: all clean
 
@@ -35,8 +43,17 @@ mapa.o: mapa.c
 audio.o: audio.c
 	$(CC) -c audio.c -o audio.o $(CFLAGS)
 
+audio_stub.o: audio_stub.c
+	$(CC) -c audio_stub.c -o audio_stub.o $(CFLAGS)
+
 espinho.o: espinho.c
 	$(CC) -c espinho.c -o espinho.o $(CFLAGS)
 
 anim.o: anim.c
 	$(CC) -c anim.c -o anim.o $(CFLAGS)
+
+screenshot.o: screenshot.c
+	$(CC) -c screenshot.c -o screenshot.o $(CFLAGS)
+
+galeria_screenshot.o: galeria_screenshot.c
+	$(CC) -c galeria_screenshot.c -o galeria_screenshot.o $(CFLAGS)
