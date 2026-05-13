@@ -774,35 +774,49 @@ void renderMoedas() {
         float bob = 0.012f * (float)sin(t * 3.0f + m * 1.5f);
         float cx = mo.x;
         float cy = mo.y + bob;
-        // sombra
+        float giro = (float)fabs(sin(t * 4.0f + m * 2.0f));
+        float raioX = raio * giro;
+        float raioY = raio;
         glColor3f(0.4f, 0.3f, 0.0f);
         glBegin(GL_TRIANGLE_FAN);
         int k;
         for(k=0;k<16;k++){
             float a = k * 3.14159f * 2.0f / 16.0f;
-            glVertex2f(cx + (raio+0.004f)*(float)cos(a),
-                       cy + (raio+0.004f)*(float)sin(a));
+            glVertex2f(cx + (raioX+0.004f)*(float)cos(a),
+                       cy + (raioY+0.004f)*(float)sin(a));
         }
         glEnd();
-        // circulo dourado
-        glColor3f(1.0f, 0.82f, 0.0f);
+        if(sin(t * 4.0f + m * 2.0f) > 0)
+            glColor3f(1.0f, 0.82f, 0.0f);
+        else
+            glColor3f(0.8f, 0.55f, 0.0f);
         glBegin(GL_TRIANGLE_FAN);
         glVertex2f(cx, cy);
         for(k=0;k<=16;k++){
             float a = k * 3.14159f * 2.0f / 16.0f;
-            glVertex2f(cx + raio*(float)cos(a),
-                       cy + raio*(float)sin(a));
+            glVertex2f(cx + raioX*(float)cos(a),
+                       cy + raioY*(float)sin(a));
         }
         glEnd();
-        // brilho
-        glColor3f(1.0f, 1.0f, 0.6f);
-        glBegin(GL_TRIANGLE_FAN);
-        glVertex2f(cx - raio*0.2f, cy + raio*0.2f);
-        for(k=0;k<=10;k++){
-            float a = k * 3.14159f * 2.0f / 10.0f;
-            glVertex2f(cx - raio*0.2f + raio*0.45f*(float)cos(a),
-                       cy + raio*0.2f + raio*0.45f*(float)sin(a));
+        if(giro > 0.3f){
+            glColor3f(1.0f, 1.0f, 0.6f);
+            glBegin(GL_TRIANGLE_FAN);
+            glVertex2f(cx - raioX*0.2f, cy + raioY*0.2f);
+            for(k=0;k<=10;k++){
+                float a = k * 3.14159f * 2.0f / 10.0f;
+                glVertex2f(cx - raioX*0.2f + raioX*0.45f*(float)cos(a),
+                           cy + raioY*0.2f + raioY*0.45f*(float)sin(a));
+            }
+            glEnd();
+            glColor3f(1.0f, 1.0f, 0.9f);
+            glBegin(GL_TRIANGLE_FAN);
+            glVertex2f(cx + raioX*0.1f, cy - raioY*0.1f);
+            for(k=0;k<=8;k++){
+                float a = k * 3.14159f * 2.0f / 8.0f;
+                glVertex2f(cx + raioX*0.1f + raioX*0.25f*(float)cos(a),
+                           cy - raioY*0.1f + raioY*0.25f*(float)sin(a));
+            }
+            glEnd();
         }
-        glEnd();
     }
 }
