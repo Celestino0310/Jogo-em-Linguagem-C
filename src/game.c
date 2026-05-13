@@ -7,6 +7,7 @@
 #include <stdbool.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <string.h>
 
 extern int gameState;
 
@@ -18,12 +19,79 @@ static int  opcaoPause   = 0;
 static bool vitoriaFinal = false;
 static float timerFase   = 0.0f;
 static float timerTotal  = 0.0f;
-//screenshot 
-// AVISO VISUAL DE SCREENSHOT
-// ============================================================
+int pontos;
+
 static bool  screenshotMessageVisible = false;
 static float screenshotMessageTimer   = 0.0f;
 static const float SCREENSHOT_MESSAGE_DURATION = 2.5f;
+
+// ============================================================
+// RANKING
+// Arquivo CSV: assets/ranking.csv
+// Formato de cada linha: MM:SS.CC,segundos_float
+// Ex: 01:23.45,83.45
+// ============================================================
+#define RANKING_PATH   "assets/ranking.csv"
+#define RANKING_MAX    20   // max entradas exibidas
+
+typedef struct {
+    float  tempo;          // segundos totais (para ordenar)
+    char   tempoStr[16];   // "MM:SS.CC" (para exibir)
+} EntradaRanking;
+
+static EntradaRanking ranking[RANKING_MAX];
+static int            rankingCount = 0;
+static bool           rankingAberto = false;  // sub-tela do ranking
+
+/* Grava o tempo atual no CSV (append) */
+static void rankingSalvar(float t) {
+    FILE *f = fopen(RANKING_PATH, "a");
+    if (!f) return;
+    int min  = (int)(t / 60.0f);
+    int seg  = (int)(t) % 60;
+    int cent = (int)((t - (int)t) * 100);
+    fprintf(f, "%02d:%02d.%02d,%.2f\n", min, seg, cent, t);
+    fclose(f);
+}
+
+/* Comparador para qsort — ordem crescente de tempo */
+static int cmpRanking(const void *a, const void *b) {
+    const EntradaRanking *ea = (const EntradaRanking *)a;
+    const EntradaRanking *eb = (const EntradaRanking *)b;
+    if (ea->tempo < eb->tempo) return -1;
+    if (ea->tempo > eb->tempo) return  1;
+    return 0;
+}
+
+/* Lê o CSV e preenche o array, já ordenado */
+static void rankingCarregar() {
+    rankingCount = 0;
+    FILE *f = fopen(RANKING_PATH, "r");
+    if (!f) return;                      /* arquivo ainda não existe — ok */
+
+    char linha[64];
+    while (fgets(linha, sizeof(linha), f) && rankingCount < RANKING_MAX) {
+        /* remove newline */
+        int len = (int)strlen(linha);
+        if (len > 0 && (linha[len-1] == '\n' || linha[len-1] == '\r'))
+            linha[len-1] = '\0';
+        if (strlen(linha) == 0) continue;
+
+        /* parse: "MM:SS.CC,float" */
+        char *virgula = strchr(linha, ',');
+        if (!virgula) continue;
+        *virgula = '\0';                 /* separa as duas partes */
+
+        strncpy(ranking[rankingCount].tempoStr, linha, 15);
+        ranking[rankingCount].tempoStr[15] = '\0';
+        ranking[rankingCount].tempo = (float)atof(virgula + 1);
+        rankingCount++;
+    }
+    fclose(f);
+
+    /* ordena do menor para o maior tempo */
+    qsort(ranking, rankingCount, sizeof(EntradaRanking), cmpRanking);
+}
 
 // ============================================================
 // JOGADOR
@@ -36,28 +104,24 @@ static float velY      =  0.0f;
 static float gravidade = -0.002f;
 static int   direcao   =  1;
 
-// Chao / paredes
 static bool noChao      = true;
 static bool onLeftWall  = false;
 static bool onRightWall = false;
 static bool isClinging  = false;
 
-// Respawn
 static float respawnX = -0.75f;
 static float respawnY = -0.70f;
 
-// Pulos
 static float jumpForce      = 0.038f;
 static int   jumpsRestantes = 1;
-static int   maxJumps       = 2;  // chao + 1 extra no ar
+static int   maxJumps       = 2;
 
-// Dash suave + direcional
 static bool  podeDash        = true;
 static bool  podeDashDiag    = true;
 static float tempoDash       = 0.0f;
 static float tempoDashDiag   = 0.0f;
 static float cooldownDash    = 3.0f;
-static float cooldownDashDiag= 0.0f;  // 0 = diagonal sem cooldown
+static float cooldownDashDiag= 0.0f;
 static bool  isDashing       = false;
 static float dashVelX        = 0.0f;
 static float dashVelY        = 0.0f;
@@ -66,20 +130,17 @@ static const float DASH_DURACAO    = 0.18f;
 static const float DASH_FORCA      = 0.045f;
 static const float DASH_FORCA_DIAG = 0.032f;
 
-// Teclas
 static bool kA=false, kD=false, kW=false, kSpace=false;
 static bool kSpaceConsumed  = false;
 static bool noChaoAnterior  = true;
 static float clingCooldownL = 0.0f;
 static float clingCooldownR = 0.0f;
-
-// Wall Cling
 static float clingSlideSpeed = 0.0f;
 static float wallJumpXForce  = 0.045f;
 static float wallJumpYForce  = 0.028f;
 
 // ============================================================
-// COLISAO COM BLOCOS
+// COLISAO
 // ============================================================
 #define PW 0.055f
 #define PH 0.090f
@@ -96,10 +157,10 @@ static void detectaParedes(){
     onRightWall = false;
     for(i = 0; i < numBlocos; i++){
         Bloco b = blocos[i];
-        bool alturaOk = (posY + PH > b.y1 + 0.01f) && (posY < b.y2 - 0.01f);
+        bool alturaOk = (posY+PH > b.y1+0.01f) && (posY < b.y2-0.01f);
         if(!alturaOk) continue;
-        if(b.x1 >= posX+PW - 0.002f && b.x1 <= posX+PW + WALL_SENSOR) onRightWall = true;
-        if(b.x2 <= posX-PW + 0.002f && b.x2 >= posX-PW - WALL_SENSOR) onLeftWall  = true;
+        if(b.x1 >= posX+PW-0.002f && b.x1 <= posX+PW+WALL_SENSOR) onRightWall = true;
+        if(b.x2 <= posX-PW+0.002f && b.x2 >= posX-PW-WALL_SENSOR) onLeftWall  = true;
     }
 }
 
@@ -111,9 +172,9 @@ static void resolveColisoes(){
         if(!colideCom(blocos[i])) continue;
         Bloco b = blocos[i];
         float oB = b.y2 - posY;
-        float oC = (posY + PH) - b.y1;
-        float oD = (posX + PW) - b.x1;
-        float oE = b.x2 - (posX - PW);
+        float oC = (posY+PH) - b.y1;
+        float oD = (posX+PW) - b.x1;
+        float oE = b.x2 - (posX-PW);
         float mH = oB < oC ? oB : oC;
         float mV = oD < oE ? oD : oE;
         if(mH < mV){
@@ -128,9 +189,6 @@ static void resolveColisoes(){
     detectaParedes();
 }
 
-// ============================================================
-// MORTE / RESPAWN
-// ============================================================
 static void morrer(){
     Health--;
     if(Health <= 0){ gameState=3; return; }
@@ -141,9 +199,6 @@ static void morrer(){
     jumpsRestantes=maxJumps;
 }
 
-// ============================================================
-// SAIDA DE FASE
-// ============================================================
 static void checaSaida(){
     int idx = indiceSaida();
     if(idx < 0 || idx >= numBlocos) return;
@@ -155,15 +210,14 @@ static void checaSaida(){
             vitoriaFinal = false;
             gameState = 2;
         } else {
+            /* jogo completo: salva tempo no CSV */
+            rankingSalvar(timerTotal);
             vitoriaFinal = true;
             gameState = 2;
         }
     }
 }
 
-// ============================================================
-// HELPER TEXTO
-// ============================================================
 static void drawText(float x, float y, const char *txt, void *fonte){
     glRasterPos2f(x, y);
     while(*txt){ glutBitmapCharacter(fonte, *txt); txt++; }
@@ -187,22 +241,21 @@ void initGame(){
     kSpaceConsumed=false;
     pausado=false; opcaoPause=0;
     vitoriaFinal=false;
+    rankingAberto=false;
     timerFase=0.0f; timerTotal=0.0f;
     initMapa();
-    animInit(); /* carrega spritesheet da Althea (branch Diogo) */
+    animInit();
 }
 
 // ============================================================
-// RENDER GAME
+// RENDER GAME (inalterado do legado)
 // ============================================================
 void renderGame(){
     renderMapa();
     renderEspinhos(faseAtual);
 
-    /* Personagem com animacao do Diogo (fallback automatico) */
     animDraw(posX, posY, (PW-0.025f)*3.0f, PH);
 
-    /* HUD vidas */
     int h;
     for(h=0;h<3;h++){
         float cor = (h<Health)?0.9f:0.2f;
@@ -218,7 +271,6 @@ void renderGame(){
         glEnd();
     }
 
-    /* HUD cooldown dash */
     if(!podeDash){
         float prog = tempoDash/cooldownDash;
         glColor3f(0.2f,0.2f,0.5f);
@@ -230,24 +282,20 @@ void renderGame(){
         drawText(-0.98f, 0.85f, "DASH", GLUT_BITMAP_HELVETICA_12);
     }
 
-    /* indicador de wall cling */
     if(isClinging){
         glColor3f(0.4f, 0.8f, 1.0f);
         drawText(-0.98f, 0.70f, "CLING", GLUT_BITMAP_HELVETICA_12);
     }
 
-    /* indicador de double jump */
     if(!noChao && jumpsRestantes > 0){
         glColor3f(0.8f, 0.6f, 1.0f);
         drawText(-0.98f, 0.64f, "2x JUMP", GLUT_BITMAP_HELVETICA_12);
     }
 
-    /* nome fase */
     const char *nomes[4]={"Mapa 1 - Floresta","Mapa 2 - Cidade","Mapa 3 - Geleiras","Mapa Final - Pico"};
     glColor3f(0.5f,0.6f,0.9f);
     drawText(0.25f, 0.92f, nomes[faseAtual], GLUT_BITMAP_HELVETICA_12);
 
-    /* timer â€” canto superior direito */
     char bufTimer[32];
     int min  = (int)(timerFase / 60.0f);
     int seg  = (int)(timerFase) % 60;
@@ -266,7 +314,6 @@ void renderGame(){
     glColor3f(0.7f,0.9f,0.5f);
     drawText(0.63f, 0.88f, bufTimer, GLUT_BITMAP_HELVETICA_18);
 
-    /* moedas HUD */
     {
         char bufMoeda[32];
         sprintf(bufMoeda, "Moedas: %d/%d", getMoedasPegas(), getMoedasTotal());
@@ -274,7 +321,6 @@ void renderGame(){
         drawText(-0.98f, 0.75f, bufMoeda, GLUT_BITMAP_HELVETICA_12);
     }
 
-    /* dica */
     glColor3f(0.20f,0.22f,0.35f);
     drawText(-0.98f,-0.96f,
              "WASD/SPACE=pular  Q=dash  Q+D/A=horiz  Q+W+D/A=diag  P=pause  M=mudo  ESC=menu",
@@ -284,7 +330,7 @@ void renderGame(){
 }
 
 // ============================================================
-// UPDATE GAME
+// UPDATE GAME (inalterado do legado)
 // ============================================================
 void updateGame(){
     if(pausado) return;
@@ -292,7 +338,6 @@ void updateGame(){
     timerFase  += 0.016f;
     timerTotal += 0.016f;
 
-    /* COOLDOWNS */
     if(clingCooldownL > 0.0f) clingCooldownL -= 0.016f;
     if(clingCooldownR > 0.0f) clingCooldownR -= 0.016f;
     if(!podeDash){
@@ -308,7 +353,6 @@ void updateGame(){
     if(noChao && !noChaoAnterior){ podeDash=true; podeDashDiag=true; }
     noChaoAnterior = noChao;
 
-    /* DASH SUAVE */
     if(isDashing){
         dashTimer -= 0.016f;
         velX += (dashVelX - velX) * 0.35f;
@@ -320,14 +364,12 @@ void updateGame(){
         }
     }
 
-    /* WALL CLING */
     isClinging = false;
     if(velY <= -0.005f){
         if(onRightWall && kD && clingCooldownR <= 0.0f) isClinging = true;
         if(onLeftWall  && kA && clingCooldownL <= 0.0f) isClinging = true;
     }
 
-    /* PULO / WALL JUMP / DOUBLE JUMP */
     if(kSpace && !kSpaceConsumed){
         bool pulou = false;
         if(isClinging){
@@ -342,14 +384,12 @@ void updateGame(){
             if(onLeftWall) { clingCooldownL=0.55f; clingCooldownR=0.0f; }
             jumpsRestantes = 0;
             pulou = true;
-        }
-        else if(noChao){
+        } else if(noChao){
             velY = jumpForce;
             jumpsRestantes = maxJumps - 1;
             noChao = false;
             pulou = true;
-        }
-        else if(jumpsRestantes > 0){
+        } else if(jumpsRestantes > 0){
             velY = jumpForce * 0.9f;
             jumpsRestantes--;
             pulou = true;
@@ -357,14 +397,12 @@ void updateGame(){
         if(pulou) kSpaceConsumed = true;
     }
 
-    /* MOVIMENTO LATERAL */
     float velAlvo = 0.0f;
     float lerp = (faseAtual==2)?0.18f:0.20f;
     if(kA){ velAlvo = -0.013f; direcao = -1; }
     if(kD){ velAlvo =  0.013f; direcao =  1; }
     if(!isClinging) velX += (velAlvo - velX) * lerp;
 
-    /* GRAVIDADE / CLING */
     if(isDashing){
         /* sem gravidade durante o dash */
     } else if(isClinging){
@@ -375,8 +413,12 @@ void updateGame(){
         if(velY < -0.065f) velY = -0.065f;
     }
 
+    /* CLAMP: impede sair dos limites do mundo mesmo com dash */
     posX += velX;
     posY += velY;
+    if(posX - PW < -1.00f){ posX = -1.00f + PW; velX = 0; }
+    if(posX + PW >  1.00f){ posX =  1.00f - PW; velX = 0; }
+    if(posY + PH >  1.00f){ posY =  1.00f - PH; velY = 0; }
 
     resolveColisoes();
     checaSaida();
@@ -390,13 +432,12 @@ void updateGame(){
         morrer(); return;
     }
 
-    /* atualiza animacao (branch Diogo) */
     animUpdate(0.016f, velX, velY, (int)noChao,
                (int)podeDash, tempoDash, direcao);
 }
 
 // ============================================================
-// INPUT GAME
+// INPUT GAME (inalterado do legado)
 // ============================================================
 void handleGameInput(unsigned char tecla){
     switch(tecla){
@@ -429,19 +470,13 @@ void handleGameInput(unsigned char tecla){
             break;
         case 'm':case 'M':
             { extern void audioMutar(); audioMutar(); }
-            break; 
-		case 'o':case 'O':
-            // Detecta a tecla P durante o jogo e salva a tela atual.
+            break;
+        case 'o':case 'O':
             if(salvarScreenshot()){
-                /*
-                   Quando a screenshot e salva com sucesso, ativamos a mensagem
-                   e reiniciamos o timer para ela ficar alguns segundos na tela.
-                */
                 screenshotMessageVisible=true;
                 screenshotMessageTimer=SCREENSHOT_MESSAGE_DURATION;
             }
             break;
-            
         case 27:
             kA=false; kD=false; kW=false; kSpace=false;
             gameState=0; initGame();
@@ -462,7 +497,7 @@ void handleGameInputUp(unsigned char tecla){
 }
 
 // ============================================================
-// PAUSE
+// PAUSE (inalterado)
 // ============================================================
 void renderPause(){
     renderMapa();
@@ -507,24 +542,94 @@ void handlePauseInput(unsigned char tecla){
 }
 
 // ============================================================
-// VITORIA
+// SUB-TELA DE RANKING
+// Exibida quando o jogador escolhe "VER RANKING" na vitória.
+// Lê o CSV, ordena e mostra os 10 melhores tempos.
+// ============================================================
+static void renderRanking(){
+    glClearColor(0.02f,0.05f,0.15f,1.0f);
+    glClear(GL_COLOR_BUFFER_BIT);
+
+    /* título */
+    glColor3f(1.0f, 0.85f, 0.0f);
+    drawText(-0.18f, 0.80f, "RANKING", GLUT_BITMAP_TIMES_ROMAN_24);
+
+    /* linha decorativa */
+    glColor3f(0.25f, 0.25f, 0.55f);
+    glLineWidth(2.0f);
+    glBegin(GL_LINES);
+        glVertex2f(-0.60f, 0.70f); glVertex2f(0.60f, 0.70f);
+    glEnd();
+
+    if(rankingCount == 0){
+        /* nenhuma entrada gravada ainda */
+        glColor3f(0.6f,0.6f,0.6f);
+        drawText(-0.35f, 0.20f, "Nenhum tempo registrado ainda.",
+                 GLUT_BITMAP_HELVETICA_18);
+    } else {
+        /* cabeçalho das colunas */
+        glColor3f(0.5f, 0.8f, 1.0f);
+        drawText(-0.55f, 0.58f, "#   Tempo", GLUT_BITMAP_HELVETICA_18);
+
+        /* até 10 entradas visíveis */
+        int exibir = rankingCount < 10 ? rankingCount : 10;
+        float y = 0.42f;
+        int i;
+        for(i = 0; i < exibir; i++){
+            char linha[32];
+
+            /* destaque dourado para o 1º lugar */
+            if(i == 0)       glColor3f(1.0f, 0.85f, 0.0f);
+            else if(i == 1)  glColor3f(0.80f,0.80f,0.80f);
+            else if(i == 2)  glColor3f(0.80f,0.50f,0.20f);
+            else             glColor3f(0.75f,0.75f,0.75f);
+
+            sprintf(linha, "%2d.  %s", i+1, ranking[i].tempoStr);
+            drawText(-0.30f, y, linha, GLUT_BITMAP_HELVETICA_18);
+            y -= 0.10f;
+        }
+    }
+
+    /* instrução de saída */
+    glColor3f(0.4f, 0.6f, 1.0f);
+    drawText(-0.30f, -0.82f, "ESC / ENTER = voltar",
+             GLUT_BITMAP_HELVETICA_18);
+
+    glutSwapBuffers();
+}
+
+// ============================================================
+// VITORIA — agora com 3 opções quando vitoriaFinal == true:
+//   0: MENU PRINCIPAL  (ou PROXIMA FASE quando não é final)
+//   1: VER RANKING     (só no final)
+//   2: MENU PRINCIPAL  (só no final, opção secundária)
 // ============================================================
 static int opcaoVitoria = 0;
 
+/* Quantas opções existem dependendo do contexto */
+static int totalOpcoesVitoria(){
+    if(vitoriaFinal) return 3;  /* Proxima(menu) | Ranking | Menu */
+    return 2;                   /* Proxima fase  | Menu          */
+}
+
 void renderVitoria(){
+    /* sub-tela de ranking ativa: delega para ela */
+    if(rankingAberto){ renderRanking(); return; }
+
     glClearColor(0.02f,0.12f,0.02f,1.0f);
     glClear(GL_COLOR_BUFFER_BIT);
 
     if(vitoriaFinal){
         glColor3f(1.0f,0.85f,0.0f);
-        drawText(-0.30f, 0.60f, "VOCE VENCEU!", GLUT_BITMAP_TIMES_ROMAN_24);
+        drawText(-0.30f, 0.65f, "VOCE VENCEU!", GLUT_BITMAP_TIMES_ROMAN_24);
         glColor3f(0.7f,1.0f,0.7f);
-        drawText(-0.40f, 0.40f, "Parabens! Voce completou o jogo!", GLUT_BITMAP_HELVETICA_18);
+        drawText(-0.40f, 0.48f, "Parabens! Voce completou o jogo!", GLUT_BITMAP_HELVETICA_18);
     } else {
         glColor3f(1.0f,0.85f,0.0f);
-        drawText(-0.28f, 0.60f, "FASE CONCLUIDA!", GLUT_BITMAP_TIMES_ROMAN_24);
+        drawText(-0.28f, 0.65f, "FASE CONCLUIDA!", GLUT_BITMAP_TIMES_ROMAN_24);
     }
 
+    /* timer da fase / total */
     char bufTimer[64];
     if(vitoriaFinal){
         int min=(int)(timerTotal/60.0f);
@@ -538,22 +643,34 @@ void renderVitoria(){
         sprintf(bufTimer,"Tempo da fase: %02d:%02d.%02d",min,seg,cent);
     }
     glColor3f(0.6f,0.9f,0.6f);
-    drawText(-0.35f, 0.28f, bufTimer, GLUT_BITMAP_HELVETICA_18);
+    drawText(-0.35f, 0.32f, bufTimer, GLUT_BITMAP_HELVETICA_18);
 
+    /* moedas */
     {
         char bufM[48];
         sprintf(bufM,"Moedas coletadas: %d / %d", getMoedasPegas(), getMoedasTotal());
         glColor3f(1.0f,0.82f,0.0f);
-        drawText(-0.30f, 0.08f, bufM, GLUT_BITMAP_HELVETICA_18);
+        drawText(-0.30f, 0.14f, bufM, GLUT_BITMAP_HELVETICA_18);
     }
 
+    /* ---- OPÇÕES ---- */
+    /* Opção 0 */
     if(opcaoVitoria==0) glColor3f(1.0f,0.85f,0.0f); else glColor3f(0.6f,0.6f,0.6f);
     const char *op0 = vitoriaFinal ? "> MENU PRINCIPAL" : "> PROXIMA FASE";
-    drawText(-0.25f,-0.15f, op0, GLUT_BITMAP_HELVETICA_18);
+    drawText(-0.30f, -0.05f, op0, GLUT_BITMAP_HELVETICA_18);
 
-    if(!vitoriaFinal){
+    if(vitoriaFinal){
+        /* Opção 1 — VER RANKING (só na vitória final) */
         if(opcaoVitoria==1) glColor3f(1.0f,0.85f,0.0f); else glColor3f(0.6f,0.6f,0.6f);
-        drawText(-0.25f,-0.35f, "  MENU PRINCIPAL", GLUT_BITMAP_HELVETICA_18);
+        drawText(-0.30f, -0.22f, "  VER RANKING", GLUT_BITMAP_HELVETICA_18);
+
+        /* Opção 2 — JOGAR NOVAMENTE */
+        if(opcaoVitoria==2) glColor3f(1.0f,0.85f,0.0f); else glColor3f(0.6f,0.6f,0.6f);
+        drawText(-0.30f, -0.39f, "  JOGAR NOVAMENTE", GLUT_BITMAP_HELVETICA_18);
+    } else {
+        /* Opção 1 — MENU PRINCIPAL (quando não é vitória final) */
+        if(opcaoVitoria==1) glColor3f(1.0f,0.85f,0.0f); else glColor3f(0.6f,0.6f,0.6f);
+        drawText(-0.30f, -0.22f, "  MENU PRINCIPAL", GLUT_BITMAP_HELVETICA_18);
     }
 
     glColor3f(0.3f,0.5f,0.3f);
@@ -564,33 +681,63 @@ void renderVitoria(){
 }
 
 void handleVitoriaInput(unsigned char tecla){
-    int totalOpcoes = vitoriaFinal ? 1 : 2;
+    /* dentro do ranking: qualquer tecla volta */
+    if(rankingAberto){
+        if(tecla == 27 || tecla == '\r' || tecla == '\n')
+            rankingAberto = false;
+        glutPostRedisplay();
+        return;
+    }
+
+    int total = totalOpcoesVitoria();
     switch(tecla){
         case 'w':case 'W':
-            opcaoVitoria=(opcaoVitoria-1+totalOpcoes)%totalOpcoes; break;
+            opcaoVitoria=(opcaoVitoria-1+total)%total; break;
         case 's':case 'S':
-            opcaoVitoria=(opcaoVitoria+1)%totalOpcoes; break;
+            opcaoVitoria=(opcaoVitoria+1)%total; break;
+
         case '\r':case '\n':
-            if(vitoriaFinal || opcaoVitoria==1){
-                gameState=0; initGame();
+            if(vitoriaFinal){
+                if(opcaoVitoria==0){
+                    /* menu principal */
+                    gameState=0; initGame(); opcaoVitoria=0;
+                } else if(opcaoVitoria==1){
+                    /* abre sub-tela de ranking: lê e ordena CSV */
+                    rankingCarregar();
+                    rankingAberto = true;
+                } else {
+                    /* jogar novamente do início */
+                    initGame(); gameState=1; opcaoVitoria=0;
+                }
             } else {
-                avancarFase();
-                posX=-0.75f; posY=-0.70f; velX=0; velY=0; noChao=true;
-                respawnX=-0.75f; respawnY=-0.70f;
-                Health=3;
-                kA=false; kD=false; kW=false; kSpace=false;
-                timerFase=0.0f;
-                gameState=1;
+                /* não é vitória final */
+                if(opcaoVitoria==0){
+                    /* próxima fase */
+                    avancarFase();
+                    posX=-0.75f; posY=-0.70f; velX=0; velY=0; noChao=true;
+                    respawnX=-0.75f; respawnY=-0.70f;
+                    Health=3;
+                    kA=false; kD=false; kW=false; kSpace=false;
+                    timerFase=0.0f;
+                    gameState=1;
+                } else {
+                    gameState=0; initGame();
+                }
+                opcaoVitoria=0;
             }
+            break;
+
+        case 27:
+            if(vitoriaFinal){ gameState=0; initGame(); }
+            else             { gameState=0; initGame(); }
             opcaoVitoria=0;
             break;
-        case 27:
-            gameState=0; initGame(); opcaoVitoria=0; break;
     }
+    glutPostRedisplay();
 }
 
 // ============================================================
-// DERROTA
+// DERROTA (inalterado do legado)
 // ============================================================
 static int opcaoDerrota = 0;
 

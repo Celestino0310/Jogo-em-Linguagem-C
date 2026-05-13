@@ -709,6 +709,7 @@ void avancarFase(){
             tipoAtual = tipoFase2;
             // TROCA PARA MUSICA DO GELO ao entrar na fase 3 (indice 2)
             audioTrocarMusica(MUSICA_2);
+          
             break;
         case 3:
             blocos    = blocosFase3;

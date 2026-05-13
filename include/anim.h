@@ -19,14 +19,7 @@ typedef enum {
     ANIM_COUNT
 } AnimEstado;
 
-/* ─────────────────────────────────────────────────────────────
-   API pública — chamada apenas por game.c
-   ──────────────────────────────────────────────────────────── */
 
-/* Inicializa: carrega a spritesheet e define os frames.
-   Chame dentro de initGame().
-   Se o arquivo não existir, o sistema cai em modo fallback
-   (desenha o retângulo colorido original).               */
 void animInit(void);
 
 /* Atualiza o estado da animação a cada frame.
